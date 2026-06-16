@@ -720,6 +720,28 @@ header {
 }
 #delistedView.active { display: block; }
 
+/* ── INFO VERIFY BUTTON ── */
+.btn-info-verify {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--gray-20);
+  background: var(--gray-08);
+  color: var(--gray-50);
+  transition: all .15s;
+  letter-spacing: 0.04em;
+  margin-bottom: 16px;
+  display: block;
+}
+.btn-info-verify.verified {
+  background: #eaf5ee;
+  border-color: #4caf7d;
+  color: #2e7d52;
+  font-weight: 500;
+}
+
 /* ── PER-BEAN DESIGN TASKS in view modal ── */
 .design-tasks-section {
   margin-top: 20px;
@@ -1120,6 +1142,7 @@ header {
       </div>
     </div>
     <div class="modal-body" style="padding-top:0">
+      <button class="btn-info-verify" id="btnInfoVerify" onclick="toggleInfoVerified()">□ 資訊確認無誤</button>
       <div class="design-tasks-section">
         <div class="design-tasks-header">
           <div class="design-section-label">美編待辦 Design Tasks</div>
@@ -1534,10 +1557,37 @@ function openViewModal(id) {
 
   document.getElementById('viewModalOverlay').classList.add('open');
   renderDesignTasksForBean(id);
+  const row = allRows.find(r => Number(r.id) === id);
+  updateInfoVerifyButton(row && row.info_verified);
 }
 
 function closeViewModal(e) {
   if (e.target === document.getElementById('viewModalOverlay')) closeAllModals();
+}
+
+function updateInfoVerifyButton(verified) {
+  const btn = document.getElementById('btnInfoVerify');
+  if (!btn) return;
+  if (verified) {
+    btn.classList.add('verified');
+    btn.textContent = '✓ 資訊確認無誤';
+  } else {
+    btn.classList.remove('verified');
+    btn.textContent = '□ 資訊確認無誤';
+  }
+}
+
+async function toggleInfoVerified() {
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  row.info_verified = !row.info_verified;
+  lsSave(allRows);
+  splitRows();
+  updateInfoVerifyButton(row.info_verified);
+  try {
+    await sb.from('beans').update({ info_verified: row.info_verified }).eq('id', id);
+  } catch(e) { setSyncStatus('local'); }
 }
 function closeAllModals() {
   document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
