@@ -765,6 +765,16 @@ header {
   width: 132px;
   flex-shrink: 0;
 }
+.info-verify-name {
+  padding: 9px 10px;
+  border: 1px solid var(--gray-20);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--gray-70);
+  background: #fff;
+  width: 80px;
+  flex-shrink: 0;
+}
 .btn-info-verify.verified {
   background: #eaf5ee;
   border-color: #4caf7d;
@@ -1181,6 +1191,7 @@ header {
       <div class="info-verify-row">
         <button class="btn-info-verify" id="btnInfoVerify" onclick="toggleInfoVerified()">□ 資訊確認無誤</button>
         <input class="info-verify-date" type="date" id="infoVerifyDate" onchange="saveInfoVerifiedDate()" title="確認日期">
+        <input class="info-verify-name" type="text" id="infoVerifyName" onchange="saveInfoVerifiedName()" placeholder="姓名" title="確認人">
       </div>
       <div class="design-tasks-section">
         <div class="design-tasks-header">
@@ -1608,6 +1619,8 @@ function openViewModal(id) {
   updateInfoVerifyButton(row && row.info_verified);
   const dateEl = document.getElementById('infoVerifyDate');
   if (dateEl) dateEl.value = (row && row.info_verified_date) || '';
+  const nameEl = document.getElementById('infoVerifyName');
+  if (nameEl) nameEl.value = (row && row.info_verified_by) || '';
 }
 
 function closeViewModal(e) {
@@ -1647,6 +1660,17 @@ async function saveInfoVerifiedDate() {
   lsSave(allRows);
   try {
     await sb.from('beans').update({ info_verified_date: val }).eq('id', id);
+  } catch(e) { setSyncStatus('local'); }
+}
+async function saveInfoVerifiedName() {
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  const val = document.getElementById('infoVerifyName').value.trim() || null;
+  row.info_verified_by = val;
+  lsSave(allRows);
+  try {
+    await sb.from('beans').update({ info_verified_by: val }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
 }
 function closeAllModals() {
