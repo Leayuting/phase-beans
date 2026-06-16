@@ -402,23 +402,30 @@ header {
 .price-value { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .price-value small { font-size: 11px; font-weight: 400; color: var(--gray-50); }
 .modal-close {
-  position: absolute;
-  top: 16px; right: 20px;
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   color: var(--gray-50);
   line-height: 1;
-  padding: 4px;
+  padding: 4px 6px;
+  border-radius: 4px;
 }
-.modal-close:hover { color: var(--black); }
-.modal-actions {
-  padding: 16px 32px 28px;
+.modal-close:hover { color: var(--black); background: var(--gray-08); }
+.modal-top-bar {
+  position: absolute;
+  top: 14px; right: 16px;
   display: flex;
-  gap: 10px;
-  border-top: 1px solid var(--gray-08);
+  gap: 6px;
+  align-items: center;
 }
+.modal-top-bar .btn-edit,
+.modal-top-bar .btn-delist,
+.modal-top-bar .btn-delete {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.modal-actions { display: none; }
 .btn-edit, .btn-delist, .btn-delete {
   padding: 8px 20px;
   border-radius: var(--radius);
@@ -1126,7 +1133,12 @@ header {
 <div class="modal-overlay" id="viewModalOverlay" onclick="closeViewModal(event)">
   <div class="modal" id="viewModal">
     <div class="modal-stripe" id="viewStripe"></div>
-    <button class="modal-close" onclick="closeAllModals()">×</button>
+    <div class="modal-top-bar">
+      <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
+      <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
+      <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
+      <button class="modal-close" onclick="closeAllModals()">×</button>
+    </div>
     <div class="modal-header">
       <div class="modal-title-zh" id="vName"></div>
       <div class="modal-title-en" id="vNameEn"></div>
@@ -1168,11 +1180,7 @@ header {
         </div>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
-      <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
-      <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
-    </div>
+
   </div>
 </div>
 
@@ -1445,10 +1453,14 @@ function filteredBeans() {
     );
   }
   if (activeSort === 'price_asc' || activeSort === 'price_desc') {
+    const asc = activeSort === 'price_asc';
     list = [...list].sort((a,b) => {
-      const pa = parseFloat(a.price_half) || 99999;
-      const pb = parseFloat(b.price_half) || 99999;
-      return activeSort === 'price_asc' ? pa - pb : pb - pa;
+      const pa = parseFloat(a.price_green) || NaN;
+      const pb = parseFloat(b.price_green) || NaN;
+      if (isNaN(pa) && isNaN(pb)) return 0;
+      if (isNaN(pa)) return 1;
+      if (isNaN(pb)) return -1;
+      return asc ? pa - pb : pb - pa;
     });
   }
   return list;
