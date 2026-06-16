@@ -1130,7 +1130,7 @@ header {
 </div>
 
 <!-- View Modal -->
-<div class="modal-overlay" id="viewModalOverlay" onclick="closeViewModal(event)">
+<div class="modal-overlay" id="viewModalOverlay">
   <div class="modal" id="viewModal">
     <div class="modal-stripe" id="viewStripe"></div>
     <div class="modal-top-bar">
@@ -2061,7 +2061,10 @@ function renderDesignTasksForBean(beanId) {
   document.getElementById('dTaskProgress').innerHTML = `完成 <strong>${done}</strong> / ${keys.length}`;
   document.getElementById('dTaskProgressBar').style.width = pct + '%';
 
-  document.getElementById('dTaskList').innerHTML = keys.map(k => {
+  const defaultKeys = DEFAULT_DESIGN_TASKS.map(t => t.key);
+  const extraKeys = keys.filter(k => !defaultKeys.includes(k));
+  const orderedKeys = [...defaultKeys.filter(k => keys.includes(k)), ...extraKeys];
+  document.getElementById('dTaskList').innerHTML = orderedKeys.map(k => {
     const t = tasks[k];
     return `<div class="design-task-row">
       <div class="dtask-check ${t.done ? 'done' : ''}" onclick="toggleDesignTask('${beanId}','${k}')"></div>
