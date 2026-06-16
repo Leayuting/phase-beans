@@ -172,6 +172,15 @@ header {
   transition: background .15s;
 }
 .btn-add:hover { background: var(--gray-70); }
+.sort-select {
+  padding: 7px 10px;
+  border: 1.5px solid var(--gray-20);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--black);
+}
 
 /* ── GRID ── */
 .grid-container {
@@ -1061,6 +1070,7 @@ header {
     <button class="cat-btn" data-cat="O"><span class="dot" style="background:var(--cat-O)"></span>其他</button>
   </div>
   <div class="toolbar-actions">
+    <select class="sort-select" id="sortSelect" onchange="activeSort=this.value;render()"><option value="newest">最新新增</option><option value="price_asc">價格低到高</option><option value="price_desc">價格高到低</option></select>
     <button class="btn-add" onclick="openAddModal()">＋ 新增豆子</button>
   </div>
 </div>
@@ -1387,13 +1397,14 @@ function subscribeRealtime() {
 let beans = [];
 let activeFilter = 'ALL';
 let searchQuery = '';
+let activeSort = 'newest';
 let viewingId = null;
 let editingId = null;
 
 async function loadData() {
   setSyncStatus('loading');
   try {
-    const { data, error } = await sb.from('beans').select('*').order('id', { ascending: true });
+    const { data, error } = await sb.from('beans').select('*').order('id', { ascending: false });
     if (error) throw error;
     allRows = data || [];
     lsSave(allRows);
@@ -1432,6 +1443,13 @@ function filteredBeans() {
       (b.flavors_en||[]).some(f=>f.toLowerCase().includes(q)) ||
       (b.awards||'').toLowerCase().includes(q)
     );
+  }
+  if (activeSort === 'price_asc' || activeSort === 'price_desc') {
+    list = [...list].sort((a,b) => {
+      const pa = parseFloat(a.price_half) || 99999;
+      const pb = parseFloat(b.price_half) || 99999;
+      return activeSort === 'price_asc' ? pa - pb : pb - pa;
+    });
   }
   return list;
 }
