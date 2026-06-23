@@ -309,6 +309,12 @@ header {
   color: var(--gray-70);
 }
 .price-pill strong { color: var(--black); }
+.price-pill.green {
+  background: #e8f5ee;
+  border: 1px solid #c8e6d8;
+  color: #2e7d52;
+}
+.price-pill.green strong { color: #1e5c3e; }
 .no-results {
   grid-column: 1/-1;
   text-align: center;
@@ -1614,16 +1620,21 @@ function render() {
     const clickFn    = batchMode ? 'toggleSelectBean(' + b.id + ',event)' : 'openViewModal(' + b.id + ')';
     const cbHtml     = batchMode ? '<div class="card-cb-wrap"><div class="card-cb ' + (cbChecked?'checked':'') + '" onclick="toggleSelectBean(' + b.id + ',event)"></div></div>' : '';
     const pendingHtml  = isPending  ? '<div style="position:absolute;top:10px;left:14px;z-index:5"><span class="pending-badge-card">待審核</span></div>' : '';
-    const priceUpdTop  = isPending ? '30' : '10';
-    const priceUpdHtml = isPriceUpd ? '<div style="position:absolute;top:' + priceUpdTop + 'px;left:14px;z-index:5"><span class="price-updated-badge">價格已更新</span></div>' : '';
+    const priceLabels = {price_20g:'20g',price_120g:'120g',price_half:'半磅',price_1lb:'一磅',price_drip:'濾掛',price_cup:'單杯'};
+    let priceUpdHtml = '';
+    if (isPriceUpd && b.price_previous) {
+      const changed = Object.keys(priceLabels).filter(k => (b.price_previous[k]||'') !== (b[k]||''));
+      if (changed.length) priceUpdHtml = '<span class="price-updated-badge" style="font-size:9px;padding:1px 5px">↑ ' + changed.map(k=>priceLabels[k]).join('・') + '</span>';
+    }
     return `<div class="bean-card ${batchMode?'batch-mode':''}" onclick="${clickFn}" style="position:relative">
-      ${cbHtml}${pendingHtml}${priceUpdHtml}
+      ${cbHtml}${pendingHtml}
       <div class="card-stripe" style="background:${cat.color}"></div>
       <div class="card-body">
         <div class="card-header">
           <div class="bean-name">
             <div class="bean-name-zh">${escapeHtml(b.name_zh)}</div>
             ${b.name_en ? `<div class="bean-name-en">${escapeHtml(b.name_en)}</div>` : ''}
+            ${priceUpdHtml}
           </div>
           <span class="cat-badge" style="background:${cat.light};color:${cat.color === 'var(--cat-G)' || cat.color === 'var(--cat-Y)' ? 'var(--black)' : cat.color}">${b.category_code}</span>
         </div>
@@ -1637,7 +1648,13 @@ function render() {
           ${b.process_zh ? `<div class="meta-item"><strong>處理</strong> ${escapeHtml(b.process_zh)}</div>` : ''}
           ${b.varietal ? `<div class="meta-item"><strong>品種</strong> ${escapeHtml(b.varietal)}</div>` : ''}
         </div>
-        ${prices.length ? `<div class="card-prices">${prices.slice(0,4).map(p=>`<div class="price-pill">${p.label} <strong>${escapeHtml(p.value)}</strong></div>`).join('')}</div>` : ''}
+        ${(()=>{
+          const greenPills = [];
+          if (b.price_green) greenPills.push(`<div class="price-pill green">生豆/kg <strong>${escapeHtml(b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim())}</strong></div>`);
+          if (b.stock_total) greenPills.push(`<div class="price-pill green">庫存 <strong>${escapeHtml(b.stock_total)}</strong></div>`);
+          const pricePills = prices.slice(0,3).map(p=>`<div class="price-pill">${p.label} <strong>${escapeHtml(p.value)}</strong></div>`).join('');
+          return (greenPills.length || prices.length) ? `<div class="card-prices">${greenPills.join('')}${pricePills}</div>` : '';
+        })()}
       </div>
       ${renderDesignPips(b.id)}
     </div>`;
