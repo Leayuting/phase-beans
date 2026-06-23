@@ -1289,8 +1289,8 @@ header {
     <div class="modal-body" style="padding-top:0">
       <div class="info-verify-row">
         <button class="btn-info-verify" id="btnInfoVerify" onclick="toggleInfoVerified()">□ 資訊確認無誤</button>
-        <input class="info-verify-date" type="date" id="infoVerifyDate" onchange="saveInfoVerifiedDate()" title="確認日期">
-        <input class="info-verify-name" type="text" id="infoVerifyName" onchange="saveInfoVerifiedName()" placeholder="姓名" title="確認人">
+        <input class="info-verify-date" type="date" id="infoVerifyDate" title="確認日期">
+        <input class="info-verify-name" type="text" id="infoVerifyName" placeholder="姓名" title="確認人">
       </div>
       <div class="design-tasks-section">
         <div class="design-tasks-header">
@@ -1789,47 +1789,39 @@ function updateInfoVerifyButton(verified) {
   }
 }
 
-function checkAutoReview(id, row) {
-  if (row.pending_review && row.info_verified && row.info_verified_date && row.info_verified_by) {
-    markReviewed(id);
-  }
-}
 async function toggleInfoVerified() {
   const id = Number(viewingId);
   const row = allRows.find(r => Number(r.id) === id);
   if (!row) return;
-  row.info_verified = !row.info_verified;
-  lsSave(allRows);
-  splitRows();
-  updateInfoVerifyButton(row.info_verified);
+
+  if (row.info_verified) {
+    // 取消確認
+    row.info_verified = false;
+    lsSave(allRows); splitRows();
+    updateInfoVerifyButton(false);
+    try { await sb.from('beans').update({ info_verified: false }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+    return;
+  }
+
+  // 確認前：確認日期和姓名都已填
+  const dateVal = document.getElementById('infoVerifyDate').value || null;
+  const nameVal = document.getElementById('infoVerifyName').value.trim() || null;
+  if (!dateVal || !nameVal) {
+    showToast('請先填寫日期與姓名');
+    return;
+  }
+
+  row.info_verified = true;
+  row.info_verified_date = dateVal;
+  row.info_verified_by = nameVal;
+  lsSave(allRows); splitRows();
+  updateInfoVerifyButton(true);
   try {
-    await sb.from('beans').update({ info_verified: row.info_verified }).eq('id', id);
+    await sb.from('beans').update({ info_verified: true, info_verified_date: dateVal, info_verified_by: nameVal }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
-  checkAutoReview(id, row);
-}
-async function saveInfoVerifiedDate() {
-  const id = Number(viewingId);
-  const row = allRows.find(r => Number(r.id) === id);
-  if (!row) return;
-  const val = document.getElementById('infoVerifyDate').value || null;
-  row.info_verified_date = val;
-  lsSave(allRows);
-  try {
-    await sb.from('beans').update({ info_verified_date: val }).eq('id', id);
-  } catch(e) { setSyncStatus('local'); }
-  checkAutoReview(id, row);
-}
-async function saveInfoVerifiedName() {
-  const id = Number(viewingId);
-  const row = allRows.find(r => Number(r.id) === id);
-  if (!row) return;
-  const val = document.getElementById('infoVerifyName').value.trim() || null;
-  row.info_verified_by = val;
-  lsSave(allRows);
-  try {
-    await sb.from('beans').update({ info_verified_by: val }).eq('id', id);
-  } catch(e) { setSyncStatus('local'); }
-  checkAutoReview(id, row);
+
+  // 自動完成審核
+  if (row.pending_review) markReviewed(id);
 }
 function closeAllModals() {
   document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
