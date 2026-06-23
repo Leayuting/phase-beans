@@ -1809,6 +1809,19 @@ async function toggleInfoVerified() {
     await sb.from('beans').update({ info_verified: true, info_verified_date: dateVal, info_verified_by: nameVal }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
 
+  showToast('✓ 資訊確認無誤', async () => {
+    row.info_verified = false;
+    row.info_verified_date = null;
+    row.info_verified_by = null;
+    lsSave(allRows); splitRows();
+    updateInfoVerifyButton(false);
+    const dateEl = document.getElementById('infoVerifyDate');
+    const nameEl = document.getElementById('infoVerifyName');
+    if (dateEl) dateEl.value = '';
+    if (nameEl) nameEl.value = '';
+    try { await sb.from('beans').update({ info_verified: false, info_verified_date: null, info_verified_by: null }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  });
+
   // 自動完成審核
   if (row.pending_review) markReviewed(id);
 }
