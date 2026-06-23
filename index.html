@@ -1925,8 +1925,14 @@ async function saveBean() {
       }
       Object.assign(allRows[rowIdx], data);
     }
+    const savedId = editingId;
     lsSave(allRows); splitRows(); render(); closeAllModals();
-    showToast('✓ 已更新');
+    showToast('✓ 已更新', async () => {
+      const idx = allRows.findIndex(r => Number(r.id) === Number(savedId));
+      if (idx >= 0) Object.assign(allRows[idx], oldRow);
+      lsSave(allRows); splitRows(); render();
+      try { await sb.from('beans').update(oldRow).eq('id', savedId); } catch(e) { setSyncStatus('local'); }
+    });
     try {
       const { error } = await sb.from('beans').update(data).eq('id', editingId);
       if (error) throw error;
@@ -1945,8 +1951,14 @@ async function saveBean() {
       allRows.unshift({ ...data, id: nextId(), deleted_at: null, delisted_at: null });
       setSyncStatus('local');
     }
+    const newRow = allRows[0];
+    const newId = newRow && newRow.id;
     lsSave(allRows); splitRows(); render(); closeAllModals();
-    showToast('✓ 已新增');
+    showToast('✓ 已新增', async () => {
+      allRows = allRows.filter(r => r.id !== newId);
+      lsSave(allRows); splitRows(); render();
+      try { await sb.from('beans').delete().eq('id', newId); } catch(e) { setSyncStatus('local'); }
+    });
   }
 }
 
@@ -2054,9 +2066,13 @@ async function markReviewed(id) {
   row.pending_review = false;
   lsSave(allRows); splitRows(); render(); updatePendingBadge();
   renderPendingView();
-  try { await sb.from('beans').update({ pending_review: false }).eq('id', id); }
-  catch(e) { setSyncStatus('local'); }
-  showToast('✓ 已審核');
+  try { await sb.from('beans').update({ pending_review: false }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已審核', async () => {
+    const r = allRows.find(x => Number(x.id) === id);
+    if (r) r.pending_review = true;
+    lsSave(allRows); splitRows(); render(); updatePendingBadge(); renderPendingView();
+    try { await sb.from('beans').update({ pending_review: true }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  });
 }
 function renderPendingView() {
   const el = document.getElementById('pendingList');
