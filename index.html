@@ -1207,6 +1207,7 @@ header {
       <div class="trash-page-title">垃圾桶</div>
       <div class="trash-page-sub">已刪除的咖啡豆 · 可隨時還原</div>
     </div>
+    <button class="btn-batch" id="btnListBatch" onclick="toggleListBatchMode('trash')" style="background:#fff">批次選取</button>
     <button class="btn-empty-trash" onclick="emptyTrash()">清空垃圾桶</button>
   </div>
   <div id="trashList"></div>
@@ -1218,6 +1219,7 @@ header {
       <div class="trash-page-title">下架</div>
       <div class="trash-page-sub">已下架的咖啡豆 · 可隨時還原或移至垃圾桶</div>
     </div>
+    <button class="btn-batch" id="btnListBatch" onclick="toggleListBatchMode('delisted')" style="background:#fff">批次選取</button>
   </div>
   <div id="delistedList"></div>
 </div>
@@ -1234,9 +1236,11 @@ header {
 
 <div class="batch-bar hidden" id="batchBar">
   <span class="batch-bar-count" id="batchCount">已選 0</span>
-  <button class="batch-bar-btn delist" onclick="batchDelist()">批次下架</button>
-  <button class="batch-bar-btn delete" onclick="batchDelete()">批次刪除</button>
-  <button class="batch-bar-btn cancel" onclick="exitBatchMode()">取消</button>
+  <div class="batch-bar-btns" id="batchBarBtns" style="display:contents">
+    <button class="batch-bar-btn delist" onclick="batchDelist()">批次下架</button>
+    <button class="batch-bar-btn delete" onclick="batchDelete()">批次刪除</button>
+    <button class="batch-bar-btn cancel" onclick="exitBatchMode()">取消</button>
+  </div>
 </div>
 
 <!-- View Modal -->
@@ -2003,6 +2007,81 @@ let trash = [];
 let delisted = [];
 let batchMode = false;
 let selectedIds = new Set();
+let listBatchMode = false;
+let listSelectedIds = new Set();
+
+function toggleListBatchMode(view) {
+  listBatchMode = !listBatchMode;
+  listSelectedIds.clear();
+  const btn = document.getElementById('btnListBatch');
+  if (btn) btn.classList.toggle('active', listBatchMode);
+  document.getElementById('batchBar').classList.add('hidden');
+  if (view === 'trash') renderTrashView();
+  else if (view === 'delisted') renderDelistedView();
+}
+function exitListBatchMode() {
+  listBatchMode = false;
+  listSelectedIds.clear();
+  const btn = document.getElementById('btnListBatch');
+  if (btn) btn.classList.remove('active');
+  document.getElementById('batchBar').classList.add('hidden');
+  if (currentView === 'trash') renderTrashView();
+  else if (currentView === 'delisted') renderDelistedView();
+}
+function toggleListSelect(id, e) {
+  e && e.stopPropagation();
+  if (listSelectedIds.has(id)) listSelectedIds.delete(id);
+  else listSelectedIds.add(id);
+  document.getElementById('batchCount').textContent = '已選 ' + listSelectedIds.size;
+  document.getElementById('batchBar').classList.toggle('hidden', listSelectedIds.size === 0);
+  updateListBatchBar();
+  if (currentView === 'trash') renderTrashView();
+  else if (currentView === 'delisted') renderDelistedView();
+}
+function updateListBatchBar() {
+  const bar = document.getElementById('batchBar');
+  const inner = bar.querySelector('.batch-bar-btns');
+  if (!inner) return;
+  if (currentView === 'trash') {
+    inner.innerHTML = '<button class="batch-bar-btn delist" onclick="batchRestoreTrash()">批次還原</button><button class="batch-bar-btn delete" onclick="batchPermDelete()">批次永久刪除</button><button class="batch-bar-btn cancel" onclick="exitListBatchMode()">取消</button>';
+  } else if (currentView === 'delisted') {
+    inner.innerHTML = '<button class="batch-bar-btn delist" onclick="batchRestoreDelisted()">批次還原</button><button class="batch-bar-btn delete" onclick="batchDelistedToTrash()">批次移至垃圾桶</button><button class="batch-bar-btn cancel" onclick="exitListBatchMode()">取消</button>';
+  }
+}
+async function batchRestoreTrash() {
+  if (!listSelectedIds.size) return;
+  const ids = [...listSelectedIds];
+  ids.forEach(id => { const r = allRows.find(x => x.id === id); if (r) r.deleted_at = null; });
+  lsSave(allRows); splitRows(); render(); updateTrashBadge(); exitListBatchMode();
+  try { await sb.from('beans').update({ deleted_at: null }).in('id', ids); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已還原 ' + ids.length + ' 款');
+}
+async function batchPermDelete() {
+  if (!listSelectedIds.size) return;
+  if (!confirm('確定要永久刪除 ' + listSelectedIds.size + ' 款？')) return;
+  const ids = [...listSelectedIds];
+  allRows = allRows.filter(r => !ids.includes(r.id));
+  lsSave(allRows); splitRows(); render(); updateTrashBadge(); exitListBatchMode();
+  try { await sb.from('beans').delete().in('id', ids); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已永久刪除 ' + ids.length + ' 款');
+}
+async function batchRestoreDelisted() {
+  if (!listSelectedIds.size) return;
+  const ids = [...listSelectedIds];
+  ids.forEach(id => { const r = allRows.find(x => x.id === id); if (r) r.delisted_at = null; });
+  lsSave(allRows); splitRows(); render(); updateDelistedBadge(); exitListBatchMode();
+  try { await sb.from('beans').update({ delisted_at: null }).in('id', ids); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已還原 ' + ids.length + ' 款');
+}
+async function batchDelistedToTrash() {
+  if (!listSelectedIds.size) return;
+  const now = new Date().toISOString();
+  const ids = [...listSelectedIds];
+  ids.forEach(id => { const r = allRows.find(x => x.id === id); if (r) { r.deleted_at = now; r.delisted_at = null; } });
+  lsSave(allRows); splitRows(); updateTrashBadge(); updateDelistedBadge(); exitListBatchMode();
+  try { await sb.from('beans').update({ deleted_at: now, delisted_at: null }).in('id', ids); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已移至垃圾桶 ' + ids.length + ' 款');
+}
 
 function toggleBatchMode() {
   batchMode = !batchMode;
@@ -2018,6 +2097,7 @@ function exitBatchMode() {
   document.getElementById('batchBar').classList.add('hidden');
   render();
 }
+
 function toggleSelectBean(id, e) {
   e && e.stopPropagation();
   if (selectedIds.has(id)) selectedIds.delete(id);
@@ -2181,15 +2261,17 @@ function renderTrashView() {
       var nz = escapeHtml(b.name_zh);
       var ne = escapeHtml(b.name_en);
       var meta = [b.category_zh, b.roast_zh, b.region_zh].filter(Boolean).map(escapeHtml).join(' · ');
-      out += '<div class="trash-item">'
+      var bid = Number(b.id);
+      var checked = listSelectedIds.has(bid);
+      out += '<div class="trash-item" onclick="' + (listBatchMode ? 'toggleListSelect(' + bid + ',event)' : '') + '" style="' + (listBatchMode ? 'cursor:pointer' : '') + '">'
+        + (listBatchMode ? '<div style="padding:0 12px 0 4px;display:flex;align-items:center"><div class="card-cb ' + (checked?'checked':'') + '" onclick="toggleListSelect(' + bid + ',event)"></div></div>' : '')
         + '<div class="trash-item-stripe" style="background:' + color + '"></div>'
         + '<div class="trash-item-info">'
         + '<div class="trash-item-name">' + nz + (ne ? '<span style="font-weight:400;color:#888;margin-left:8px;font-size:12px">' + ne + '</span>' : '') + '</div>'
         + '<div class="trash-item-meta">' + meta + '</div>'
         + '</div>'
         + '<div class="trash-item-time">' + ago + '</div>'
-        + '<button class="btn-restore" onclick="restoreFromTrash(' + Number(b.id) + ')">還原</button>'
-        + '<button class="btn-perm-delete" onclick="permDeleteFromTrash(' + Number(b.id) + ')">永久刪除</button>'
+        + (listBatchMode ? '' : '<button class="btn-restore" onclick="restoreFromTrash(' + bid + ')">還原</button><button class="btn-perm-delete" onclick="permDeleteFromTrash(' + bid + ')">永久刪除</button>')
         + '</div>';
     } catch(e) {}
   }
@@ -2245,15 +2327,17 @@ function renderDelistedView() {
       var nz = escapeHtml(b.name_zh);
       var ne = escapeHtml(b.name_en);
       var meta = [b.category_zh, b.roast_zh, b.region_zh].filter(Boolean).map(escapeHtml).join(' · ');
-      out += '<div class="trash-item">'
+      var bid2 = Number(b.id);
+      var checked2 = listSelectedIds.has(bid2);
+      out += '<div class="trash-item" onclick="' + (listBatchMode ? 'toggleListSelect(' + bid2 + ',event)' : '') + '" style="' + (listBatchMode ? 'cursor:pointer' : '') + '">'
+        + (listBatchMode ? '<div style="padding:0 12px 0 4px;display:flex;align-items:center"><div class="card-cb ' + (checked2?'checked':'') + '" onclick="toggleListSelect(' + bid2 + ',event)"></div></div>' : '')
         + '<div class="trash-item-stripe" style="background:' + color + '"></div>'
         + '<div class="trash-item-info">'
         + '<div class="trash-item-name">' + nz + (ne ? '<span style="font-weight:400;color:#888;margin-left:8px;font-size:12px">' + ne + '</span>' : '') + '</div>'
         + '<div class="trash-item-meta">' + meta + '</div>'
         + '</div>'
         + '<div class="trash-item-time">' + ago + '</div>'
-        + '<button class="btn-restore" onclick="restoreFromDelisted(' + Number(b.id) + ')">還原</button>'
-        + '<button class="btn-perm-delete" onclick="moveDelistedToTrash(' + Number(b.id) + ')">移至垃圾桶</button>'
+        + (listBatchMode ? '' : '<button class="btn-restore" onclick="restoreFromDelisted(' + bid2 + ')">還原</button><button class="btn-perm-delete" onclick="moveDelistedToTrash(' + bid2 + ')">移至垃圾桶</button>')
         + '</div>';
     } catch(e) {}
   }
@@ -2465,6 +2549,8 @@ function switchView(view) {
     if (el) el.classList.toggle('active', v === view);
   });
 
+  listBatchMode = false; listSelectedIds.clear();
+  document.getElementById('batchBar').classList.add('hidden');
   if (view === 'overview') renderOverview();
   if (view === 'trash')    renderTrashView();
   if (view === 'delisted') renderDelistedView();
