@@ -822,16 +822,7 @@ header {
   transition: all .15s;
   letter-spacing: 0.04em;
 }
-.info-verify-date {
-  padding: 9px 10px;
-  border: 1px solid var(--gray-20);
-  border-radius: var(--radius);
-  font-size: 12px;
-  color: var(--gray-70);
-  background: #fff;
-  width: 132px;
-  flex-shrink: 0;
-}
+.info-verify-date,
 .info-verify-name {
   padding: 9px 10px;
   border: 1px solid var(--gray-20);
@@ -839,7 +830,7 @@ header {
   font-size: 12px;
   color: var(--gray-70);
   background: #fff;
-  width: 80px;
+  width: 110px;
   flex-shrink: 0;
 }
 .btn-info-verify.verified {
@@ -1248,7 +1239,6 @@ header {
   <div class="modal" id="viewModal">
     <div class="modal-stripe" id="viewStripe"></div>
     <div class="modal-top-bar">
-      <button class="btn-save" id="btnMarkReviewed" onclick="markReviewed(viewingId)" style="display:none;font-size:12px;padding:5px 12px">標記已審核</button>
       <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
       <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
       <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
@@ -1760,8 +1750,7 @@ function openViewModal(id) {
   const nameEl = document.getElementById('infoVerifyName');
   if (nameEl) nameEl.value = (row && row.info_verified_by) || '';
   // pending review button
-  const btnRev = document.getElementById('btnMarkReviewed');
-  if (btnRev) btnRev.style.display = (row && row.pending_review) ? '' : 'none';
+
   // previous prices
   const prevSec = document.getElementById('vPrevPriceSection');
   const prevGrid = document.getElementById('vPrevPrices');
