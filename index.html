@@ -404,6 +404,19 @@ header {
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
 }
+.green-info-section {
+  background: #f0f7f4;
+  border: 1px solid #c8e6d8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 24px;
+  margin-bottom: 4px;
+}
+.green-info-item { flex: 1; }
+.green-info-label { font-size: 10px; letter-spacing: 0.1em; color: #3a7a5a; text-transform: uppercase; margin-bottom: 3px; }
+.green-info-value { font-size: 20px; font-weight: 600; color: #1e5c3e; }
+.green-info-value small { font-size: 11px; font-weight: 400; color: #5a9a7a; }
 .price-box {
   background: var(--gray-08);
   border-radius: 4px;
@@ -1246,6 +1259,10 @@ header {
         <div class="section-label">產地資訊 Origin</div>
         <div class="spec-grid" id="vSpecs"></div>
       </div>
+      <div class="modal-section" id="vGreenSection" style="display:none">
+        <div class="section-label">生豆資訊</div>
+        <div class="green-info-section" id="vGreenInfo"></div>
+      </div>
       <div class="modal-section" id="vPriceSection">
         <div class="section-label">價格 Pricing</div>
         <div class="price-grid" id="vPrices"></div>
@@ -1647,7 +1664,6 @@ function getPriceItems(b) {
   add('一磅', b.price_1lb);
   add('濾掛', b.price_drip);
   add('單杯', b.price_cup);
-  add('生豆/kg', b.price_green ? b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim() : '');
   return items;
 }
 
@@ -1687,6 +1703,17 @@ function openViewModal(id) {
       <div class="spec-value">${escapeHtml(s.val)||'—'}</div>
       ${s.en ? `<div class="spec-value-en">${escapeHtml(s.en)}</div>` : ''}
     </div>`).join('');
+
+  // 生豆資訊
+  const greenSec = document.getElementById('vGreenSection');
+  const greenInfo = document.getElementById('vGreenInfo');
+  const greenItems = [];
+  if (b.price_green) greenItems.push({label:'生豆價格 / KG', value: b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim(), unit:'NT$'});
+  if (b.stock_total) greenItems.push({label:'總庫存量', value: b.stock_total, unit:''});
+  if (greenItems.length) {
+    greenSec.style.display = '';
+    greenInfo.innerHTML = greenItems.map(g=>`<div class="green-info-item"><div class="green-info-label">${g.label}</div><div class="green-info-value">${g.unit?`<small>${g.unit} </small>`:''}${escapeHtml(g.value)}</div></div>`).join('');
+  } else greenSec.style.display = 'none';
 
   const prices = getPriceItems(b);
   const priceEl = document.getElementById('vPriceSection');
