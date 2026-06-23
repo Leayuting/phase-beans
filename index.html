@@ -172,6 +172,17 @@ header {
   transition: background .15s;
 }
 .btn-add:hover { background: var(--gray-70); }
+.btn-batch {
+  padding: 7px 14px;
+  border: 1.5px solid var(--gray-20);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--gray-70);
+  transition: all .15s;
+}
+.btn-batch.active { background: var(--black); color: #fff; border-color: var(--black); }
 .sort-select {
   padding: 7px 10px;
   border: 1.5px solid var(--gray-20);
@@ -401,6 +412,42 @@ header {
 .price-label { font-size: 10px; color: var(--gray-50); letter-spacing: 0.06em; margin-bottom: 3px; }
 .price-value { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .price-value small { font-size: 11px; font-weight: 400; color: var(--gray-50); }
+.price-updated-badge {
+  display:inline-block; font-size:10px; padding:2px 7px;
+  background:#fff3e0; color:#e65100; border:1px solid #ffcc80;
+  border-radius:10px; letter-spacing:0.04em; margin-left:6px; vertical-align:middle;
+}
+.pending-badge-card {
+  display:inline-block; font-size:10px; padding:2px 7px;
+  background:#fff8e1; color:#b06a00; border:1px solid #ffe082;
+  border-radius:10px; letter-spacing:0.04em;
+}
+.batch-bar {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+  background:var(--black); color:#fff; border-radius:40px;
+  padding:12px 24px; display:flex; gap:12px; align-items:center;
+  font-size:13px; box-shadow:0 4px 24px rgba(0,0,0,.35);
+  z-index:900; transition:opacity .2s;
+}
+.batch-bar.hidden { opacity:0; pointer-events:none; }
+.batch-bar-count { color:#aaa; margin-right:4px; }
+.batch-bar-btn {
+  padding:6px 16px; border-radius:20px; border:none; font-size:12px;
+  cursor:pointer; letter-spacing:0.04em;
+}
+.batch-bar-btn.delist { background:#e8a040; color:#fff; }
+.batch-bar-btn.delete { background:#e05050; color:#fff; }
+.batch-bar-btn.cancel { background:#444; color:#fff; }
+.card-cb-wrap {
+  position:absolute; top:10px; right:10px; z-index:10;
+}
+.card-cb {
+  width:18px; height:18px; border-radius:4px;
+  border:2px solid var(--gray-20); background:#fff;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.card-cb.checked { background:var(--black); border-color:var(--black); }
+.card-cb.checked::after { content:"✓"; color:#fff; font-size:11px; }
 .modal-close {
   background: none;
   border: none;
@@ -472,6 +519,7 @@ header {
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: var(--gray-70);
 }
+.form-input::placeholder, .form-textarea::placeholder { color: #ccc; }
 .form-textarea { resize: vertical; min-height: 60px; }
 .form-section-title {
   font-size: 11px;
@@ -1078,6 +1126,7 @@ header {
   <span id="syncStatus">⟳ 連線中</span>
   <nav class="header-nav">
     <button class="nav-tab active" id="tabBeans" onclick="switchView('beans')">咖啡豆</button>
+    <button class="nav-tab" id="tabPending" onclick="switchView('pending')">待審核<span id="pendingBadge" class="delist-badge-num"></span></button>
     <button class="nav-tab" id="tabOverview" onclick="switchView('overview')">美編總覽</button>
     <button class="nav-tab" id="tabDelisted" onclick="switchView('delisted')">下架<span id="delistedBadge"></span></button>
     <button class="nav-tab" id="tabTrash" onclick="switchView('trash')">垃圾桶<span id="trashBadge"></span></button>
@@ -1101,6 +1150,7 @@ header {
     <button class="cat-btn" data-cat="O"><span class="dot" style="background:var(--cat-O)"></span>其他</button>
   </div>
   <div class="toolbar-actions">
+    <button class="btn-batch" id="btnBatch" onclick="toggleBatchMode()">批次選取</button>
     <select class="sort-select" id="sortSelect" onchange="activeSort=this.value;render()"><option value="newest">最新新增</option><option value="price_asc">價格低到高</option><option value="price_desc">價格高到低</option></select>
     <button class="btn-add" onclick="openAddModal()">＋ 新增豆子</button>
   </div>
@@ -1153,11 +1203,29 @@ header {
   <div id="delistedList"></div>
 </div>
 
+<div id="pendingView">
+  <div class="trash-page-header">
+    <div>
+      <div class="trash-page-title">待審核</div>
+      <div class="trash-page-sub">新增豆款待確認 · 審核後消失於此區域</div>
+    </div>
+  </div>
+  <div id="pendingList"></div>
+</div>
+
+<div class="batch-bar hidden" id="batchBar">
+  <span class="batch-bar-count" id="batchCount">已選 0</span>
+  <button class="batch-bar-btn delist" onclick="batchDelist()">批次下架</button>
+  <button class="batch-bar-btn delete" onclick="batchDelete()">批次刪除</button>
+  <button class="batch-bar-btn cancel" onclick="exitBatchMode()">取消</button>
+</div>
+
 <!-- View Modal -->
 <div class="modal-overlay" id="viewModalOverlay">
   <div class="modal" id="viewModal">
     <div class="modal-stripe" id="viewStripe"></div>
     <div class="modal-top-bar">
+      <button class="btn-save" id="btnMarkReviewed" onclick="markReviewed(viewingId)" style="display:none;font-size:12px;padding:5px 12px">標記已審核</button>
       <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
       <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
       <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
@@ -1181,6 +1249,10 @@ header {
       <div class="modal-section" id="vPriceSection">
         <div class="section-label">價格 Pricing</div>
         <div class="price-grid" id="vPrices"></div>
+      </div>
+      <div class="modal-section" id="vPrevPriceSection" style="display:none">
+        <div class="section-label">前次售價 <span class="price-updated-badge">已更新</span></div>
+        <div class="price-grid" id="vPrevPrices"></div>
       </div>
       <div class="modal-section" id="vNotesSection" style="display:none">
         <div class="section-label">備注</div>
@@ -1285,7 +1357,16 @@ header {
           <label class="form-label">品種 Varietal</label>
           <input class="form-input" id="fVarietal" placeholder="Heirloom">
         </div>
-        <div class="form-section-title">價格 Pricing（NT$）</div>
+        <div class="form-section-title">生豆資訊</div>
+        <div class="form-group">
+          <label class="form-label">生豆價格 / KG</label>
+          <input class="form-input" id="fPriceGreen" placeholder="">
+        </div>
+        <div class="form-group">
+          <label class="form-label">總庫存量</label>
+          <input class="form-input" id="fStockTotal" placeholder="">
+        </div>
+        <div class="form-section-title">售價 Pricing（NT$）</div>
         <div class="form-group">
           <label class="form-label">20g</label>
           <input class="form-input" id="fPrice20g" placeholder="">
@@ -1309,10 +1390,6 @@ header {
         <div class="form-group">
           <label class="form-label">單杯 Cup</label>
           <input class="form-input" id="fPriceCup" placeholder="">
-        </div>
-        <div class="form-group">
-          <label class="form-label">生豆價格 / KG</label>
-          <input class="form-input" id="fPriceGreen" placeholder="">
         </div>
         <div class="form-section-title">其他 Other</div>
         <div class="form-group full">
@@ -1395,6 +1472,7 @@ let allRows = [];
 
 function splitRows() {
   beans    = allRows.filter(r => !r.deleted_at && !r.delisted_at);
+  pending  = allRows.filter(r => r.pending_review && !r.deleted_at && !r.delisted_at);
   delisted = allRows.filter(r => !!r.delisted_at && !r.deleted_at)
                .map(r => ({...r, _delistedAt: new Date(r.delisted_at).getTime()}));
   trash    = allRows.filter(r => !!r.deleted_at)
@@ -1419,7 +1497,9 @@ function subscribeRealtime() {
           render(); updateTrashBadge(); updateDelistedBadge();
           if (currentView === 'trash')    renderTrashView();
           if (currentView === 'delisted') renderDelistedView();
+          if (currentView === 'pending')  renderPendingView();
           if (currentView === 'overview') renderOverview();
+          updatePendingBadge();
         });
       })
       .subscribe(s => {
@@ -1431,6 +1511,7 @@ function subscribeRealtime() {
 
 // ── STATE ──
 let beans = [];
+let pending = [];
 let activeFilter = 'ALL';
 let searchQuery = '';
 let activeSort = 'newest';
@@ -1510,7 +1591,12 @@ function render() {
     const flavorsEn = (b.flavors_en||[]).filter(f => !f.includes('：') && !f.includes(':'));
     const prices = getPriceItems(b);
 
-    return `<div class="bean-card" onclick="openViewModal(${b.id})">
+    const isPending  = !!b.pending_review;
+    const isPriceUpd = !!b.price_updated;
+    return `<div class="bean-card ${batchMode?'batch-mode':''}" onclick="${batchMode?`toggleSelectBean(${b.id},event)`:`openViewModal(${b.id})`}" style="position:relative">
+      ${batchMode ? `<div class="card-cb-wrap"><div class="card-cb ${selectedIds.has(${b.id})?'checked':''}" onclick="toggleSelectBean(${b.id},event)"></div></div>` : ''}
+      ${isPending ? `<div style="position:absolute;top:10px;left:14px;z-index:5"><span class="pending-badge-card">待審核</span></div>` : ''}
+      ${isPriceUpd ? `<div style="position:absolute;top:${isPending?'30':'10'}px;left:14px;z-index:5"><span class="price-updated-badge">價格已更新</span></div>` : ''}
       <div class="card-stripe" style="background:${cat.color}"></div>
       <div class="card-body">
         <div class="card-header">
@@ -1621,6 +1707,18 @@ function openViewModal(id) {
   if (dateEl) dateEl.value = (row && row.info_verified_date) || '';
   const nameEl = document.getElementById('infoVerifyName');
   if (nameEl) nameEl.value = (row && row.info_verified_by) || '';
+  // pending review button
+  const btnRev = document.getElementById('btnMarkReviewed');
+  if (btnRev) btnRev.style.display = (row && row.pending_review) ? '' : 'none';
+  // previous prices
+  const prevSec = document.getElementById('vPrevPriceSection');
+  const prevGrid = document.getElementById('vPrevPrices');
+  if (prevSec && prevGrid && row && row.price_updated && row.price_previous) {
+    const prev = row.price_previous;
+    const labels = {price_20g:'20g', price_120g:'120g', price_half:'半磅', price_1lb:'一磅', price_drip:'濾掛', price_cup:'單杯'};
+    prevGrid.innerHTML = Object.entries(labels).filter(([k])=>prev[k]).map(([k,l])=>`<div class="price-box"><div class="price-label">${l}</div><div class="price-value" style="font-size:15px"><small>NT$</small> ${escapeHtml(prev[k])}</div></div>`).join('');
+    prevSec.style.display = prevGrid.innerHTML ? '' : 'none';
+  } else if (prevSec) prevSec.style.display = 'none';
 }
 
 function closeViewModal(e) {
@@ -1700,6 +1798,7 @@ function fillForm(b) {
   document.getElementById('fPriceDrip').value = b.price_drip || '';
   document.getElementById('fPriceCup').value = b.price_cup || '';
   document.getElementById('fPriceGreen').value = b.price_green || '';
+  document.getElementById('fStockTotal').value = b.stock_total || '';
   document.getElementById('fAwards').value = b.awards || '';
   document.getElementById('fNotes').value = b.notes || '';
 }
@@ -1736,6 +1835,7 @@ async function saveBean() {
   const catMeta = CAT_META[cat];
   const splitFlavors = (str) => str ? str.split(/[｜|,，]/).map(s=>s.trim()).filter(Boolean) : [];
 
+  const priceFields = ['price_20g','price_120g','price_half','price_1lb','price_drip','price_cup'];
   const data = {
     category_code: cat,
     category_zh: catMeta.zh,
@@ -1752,13 +1852,14 @@ async function saveBean() {
     process_en: document.getElementById('fProcessEn').value.trim(),
     altitude: document.getElementById('fAltitude').value.trim(),
     varietal: document.getElementById('fVarietal').value.trim(),
+    price_green: document.getElementById('fPriceGreen').value.trim(),
+    stock_total: document.getElementById('fStockTotal').value.trim(),
     price_20g: document.getElementById('fPrice20g').value.trim(),
     price_120g: document.getElementById('fPrice120g').value.trim(),
     price_half: document.getElementById('fPriceHalf').value.trim(),
     price_1lb: document.getElementById('fPrice1lb').value.trim(),
     price_drip: document.getElementById('fPriceDrip').value.trim(),
     price_cup: document.getElementById('fPriceCup').value.trim(),
-    price_green: document.getElementById('fPriceGreen').value.trim(),
     awards: document.getElementById('fAwards').value.trim(),
     notes: document.getElementById('fNotes').value.trim(),
     updated_at: new Date().toISOString(),
@@ -1766,7 +1867,16 @@ async function saveBean() {
 
   if (editingId) {
     const rowIdx = allRows.findIndex(r => Number(r.id) === Number(editingId));
-    if (rowIdx >= 0) Object.assign(allRows[rowIdx], data);
+    if (rowIdx >= 0) {
+      const oldRow = allRows[rowIdx];
+      const priceChanged = priceFields.some(f => (data[f]||'') !== (oldRow[f]||''));
+      if (priceChanged) {
+        data.price_previous = {};
+        priceFields.forEach(f => { data.price_previous[f] = oldRow[f] || ''; });
+        data.price_updated = true;
+      }
+      Object.assign(allRows[rowIdx], data);
+    }
     lsSave(allRows); splitRows(); render(); closeAllModals();
     showToast('✓ 已更新');
     try {
@@ -1777,6 +1887,7 @@ async function saveBean() {
     const defaultTasks = {};
     DEFAULT_DESIGN_TASKS.forEach(t => { defaultTasks[t.key] = { label: t.label, done: false }; });
     data.design_tasks = defaultTasks;
+    data.pending_review = true;
     data.created_at = data.updated_at;
     try {
       const { data: row, error } = await sb.from('beans').insert(data).select().single();
@@ -1830,6 +1941,97 @@ async function confirmDelist() {
 // ── TRASH & DELISTED state (populated by splitRows) ──
 let trash = [];
 let delisted = [];
+let batchMode = false;
+let selectedIds = new Set();
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  selectedIds.clear();
+  document.getElementById('btnBatch').classList.toggle('active', batchMode);
+  document.getElementById('batchBar').classList.toggle('hidden', true);
+  render();
+}
+function exitBatchMode() {
+  batchMode = false;
+  selectedIds.clear();
+  document.getElementById('btnBatch').classList.remove('active');
+  document.getElementById('batchBar').classList.add('hidden');
+  render();
+}
+function toggleSelectBean(id, e) {
+  e && e.stopPropagation();
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  document.getElementById('batchCount').textContent = `已選 ${selectedIds.size}`;
+  document.getElementById('batchBar').classList.toggle('hidden', selectedIds.size === 0);
+  render();
+}
+async function batchDelist() {
+  if (!selectedIds.size) return;
+  if (!confirm(`確定要下架 ${selectedIds.size} 款豆子？`)) return;
+  const now = new Date().toISOString();
+  const ids = [...selectedIds];
+  ids.forEach(id => {
+    const row = allRows.find(r => Number(r.id) === id);
+    if (row) { row.delisted_at = now; }
+  });
+  lsSave(allRows); splitRows(); exitBatchMode(); render();
+  try { await sb.from('beans').update({ delisted_at: now }).in('id', ids); }
+  catch(e) { setSyncStatus('local'); }
+  showToast(`✓ 已下架 ${ids.length} 款`);
+}
+async function batchDelete() {
+  if (!selectedIds.size) return;
+  if (!confirm(`確定要刪除 ${selectedIds.size} 款豆子？`)) return;
+  const now = new Date().toISOString();
+  const ids = [...selectedIds];
+  ids.forEach(id => {
+    const row = allRows.find(r => Number(r.id) === id);
+    if (row) { row.deleted_at = now; }
+  });
+  lsSave(allRows); splitRows(); exitBatchMode(); render();
+  try { await sb.from('beans').update({ deleted_at: now }).in('id', ids); }
+  catch(e) { setSyncStatus('local'); }
+  showToast(`✓ 已刪除 ${ids.length} 款`);
+}
+function updatePendingBadge() {
+  const el = document.getElementById('pendingBadge');
+  if (!el) return;
+  el.textContent = pending.length || '';
+  el.style.display = pending.length ? '' : 'none';
+}
+async function markReviewed(id) {
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  row.pending_review = false;
+  lsSave(allRows); splitRows(); render(); updatePendingBadge();
+  renderPendingView();
+  try { await sb.from('beans').update({ pending_review: false }).eq('id', id); }
+  catch(e) { setSyncStatus('local'); }
+  showToast('✓ 已審核');
+}
+function renderPendingView() {
+  const el = document.getElementById('pendingList');
+  if (!el) return;
+  if (!pending.length) {
+    el.innerHTML = '<div class="no-results" style="padding:60px 0">目前沒有待審核的豆款</div>';
+    return;
+  }
+  el.innerHTML = pending.map(b => {
+    const cat = CAT_META[b.category_code] || CAT_META.X;
+    return `<div class="trash-item">
+      <div class="trash-item-info" onclick="openViewModal(${b.id})" style="cursor:pointer">
+        <div class="trash-item-name">${escapeHtml(b.name_zh)}${b.name_en?` <span style="color:var(--gray-50);font-size:12px">${escapeHtml(b.name_en)}</span>`:''}
+          <span class="pending-badge-card" style="margin-left:8px">待審核</span>
+        </div>
+        <div class="trash-item-meta">${cat.zh} · ${b.process_zh||''}</div>
+      </div>
+      <div class="trash-item-actions">
+        <button class="trash-restore-btn" onclick="markReviewed(${b.id})">標記已審核</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function updateTrashBadge() {
   const el = document.getElementById('trashBadge');
@@ -2184,12 +2386,14 @@ function switchView(view) {
   const trashEl     = document.getElementById('trashView');
   const delistedEl  = document.getElementById('delistedView');
   const toolbar     = document.querySelector('.toolbar');
-  const tabs = { beans: 'tabBeans', overview: 'tabOverview', delisted: 'tabDelisted', trash: 'tabTrash' };
+  const pendingEl   = document.getElementById('pendingView');
+  const tabs = { beans: 'tabBeans', pending: 'tabPending', overview: 'tabOverview', delisted: 'tabDelisted', trash: 'tabTrash' };
 
   beansEl.classList.toggle('hidden', view !== 'beans');
   overviewEl.classList.toggle('active', view === 'overview');
   trashEl.classList.toggle('active', view === 'trash');
   delistedEl.classList.toggle('active', view === 'delisted');
+  pendingEl.classList.toggle('active', view === 'pending');
   toolbar.style.display = view === 'beans' ? '' : 'none';
 
   Object.entries(tabs).forEach(([v, id]) => {
@@ -2200,6 +2404,7 @@ function switchView(view) {
   if (view === 'overview') renderOverview();
   if (view === 'trash')    renderTrashView();
   if (view === 'delisted') renderDelistedView();
+  if (view === 'pending')  renderPendingView();
 }
 
 function renderOverview() {
@@ -2271,6 +2476,7 @@ function renderOverviewTable() {
   render();
   updateTrashBadge();
   updateDelistedBadge();
+  updatePendingBadge();
   subscribeRealtime();
 })();
 
