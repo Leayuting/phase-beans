@@ -1789,6 +1789,11 @@ function updateInfoVerifyButton(verified) {
   }
 }
 
+function checkAutoReview(id, row) {
+  if (row.pending_review && row.info_verified && row.info_verified_date && row.info_verified_by) {
+    markReviewed(id);
+  }
+}
 async function toggleInfoVerified() {
   const id = Number(viewingId);
   const row = allRows.find(r => Number(r.id) === id);
@@ -1800,6 +1805,7 @@ async function toggleInfoVerified() {
   try {
     await sb.from('beans').update({ info_verified: row.info_verified }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
+  checkAutoReview(id, row);
 }
 async function saveInfoVerifiedDate() {
   const id = Number(viewingId);
@@ -1811,6 +1817,7 @@ async function saveInfoVerifiedDate() {
   try {
     await sb.from('beans').update({ info_verified_date: val }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
+  checkAutoReview(id, row);
 }
 async function saveInfoVerifiedName() {
   const id = Number(viewingId);
@@ -1822,6 +1829,7 @@ async function saveInfoVerifiedName() {
   try {
     await sb.from('beans').update({ info_verified_by: val }).eq('id', id);
   } catch(e) { setSyncStatus('local'); }
+  checkAutoReview(id, row);
 }
 function closeAllModals() {
   document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
