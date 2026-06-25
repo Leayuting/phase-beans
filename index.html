@@ -1268,7 +1268,7 @@ header {
         <div class="price-grid" id="vPrices"></div>
       </div>
       <div class="modal-section" id="vPrevPriceSection" style="display:none">
-        <div class="section-label">前次售價 <span class="price-updated-badge">已更新</span></div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">前次售價 <span class="price-updated-badge">已更新</span><button onclick="clearPriceHistory()" style="font-size:11px;padding:2px 8px;border:1px solid var(--gray-20);border-radius:4px;background:#fff;cursor:pointer;color:var(--gray-50)">清除紀錄</button></div>
         <div class="price-grid" id="vPrevPrices"></div>
       </div>
       <div class="modal-section" id="vNotesSection" style="display:none">
@@ -1882,6 +1882,18 @@ function closeFormModal(e) {
   if (e.target === document.getElementById('formModalOverlay')) closeAllModals();
 }
 
+async function clearPriceHistory() {
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  row.price_updated = false;
+  row.price_previous = null;
+  lsSave(allRows); splitRows();
+  document.getElementById('vPrevPriceSection').style.display = 'none';
+  render();
+  try { await sb.from('beans').update({ price_updated: false, price_previous: null }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  showToast('✓ 前次售價紀錄已清除');
+}
 async function saveBean() {
   const nameZh = document.getElementById('fNameZh').value.trim();
   if (!nameZh) { showToast('請填寫豆名'); return; }
