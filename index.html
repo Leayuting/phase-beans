@@ -485,6 +485,18 @@ header {
   gap: 6px;
   align-items: center;
 }
+.btn-copy-info {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-20);
+  background: #fff;
+  color: var(--gray-70);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: all .15s;
+}
+.btn-copy-info:hover { border-color: var(--gray-70); color: var(--black); }
 .modal-top-bar .btn-edit,
 .modal-top-bar .btn-delist,
 .modal-top-bar .btn-delete {
@@ -1239,6 +1251,7 @@ header {
   <div class="modal" id="viewModal">
     <div class="modal-stripe" id="viewStripe"></div>
     <div class="modal-top-bar">
+      <button class="btn-copy-info" id="btnCopyInfo" onclick="copyBeanInfo()">複製簡介</button>
       <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
       <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
       <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
@@ -1882,6 +1895,34 @@ function closeFormModal(e) {
   if (e.target === document.getElementById('formModalOverlay')) closeAllModals();
 }
 
+function copyBeanInfo() {
+  const id = Number(viewingId);
+  const b = allRows.find(r => Number(r.id) === id);
+  if (!b) return;
+  const fzh = (b.flavors_zh||[]).filter(f=>!f.includes('：')&&!f.includes(':')).join('｜');
+  const fen = (b.flavors_en||[]).filter(f=>!f.includes('：')&&!f.includes(':')).join('｜');
+  const lines = [];
+  if (fzh) lines.push(fzh);
+  if (fen) lines.push(fen);
+  lines.push('');
+  if (b.roast_zh)   lines.push('烘焙：' + b.roast_zh);
+  if (b.region_zh)  lines.push('產區：' + b.region_zh);
+  if (b.process_zh) lines.push('處理：' + b.process_zh);
+  if (b.altitude)   lines.push('海拔：' + b.altitude);
+  if (b.varietal)   lines.push('品種：' + b.varietal);
+  lines.push('');
+  if (b.roast_en)   lines.push('Roast：' + b.roast_en);
+  if (b.region_en)  lines.push('Region：' + b.region_en);
+  if (b.process_en) lines.push('Process：' + b.process_en);
+  if (b.altitude)   lines.push('Altitude：' + b.altitude);
+  if (b.varietal)   lines.push('Varietal：' + b.varietal);
+  const text = lines.join('
+').replace(/
+{3,}/g, '
+
+').trim();
+  navigator.clipboard.writeText(text).then(() => showToast('✓ 已複製商品簡介')).catch(() => showToast('複製失敗，請手動複製'));
+}
 async function clearPriceHistory() {
   const id = Number(viewingId);
   const row = allRows.find(r => Number(r.id) === id);
