@@ -1639,6 +1639,14 @@ function render() {
       const changed = Object.keys(priceLabels).filter(k => (b.price_previous[k]||'') !== (b[k]||''));
       if (changed.length) priceUpdHtml = '<span class="price-updated-badge" style="font-size:9px;padding:1px 5px">↑ ' + changed.map(k=>priceLabels[k]).join('・') + '</span>';
     }
+    const greenPills = [];
+    if (b.price_green) {
+      const gv = b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim();
+      if (gv) greenPills.push('<div class="price-pill green">生豆/kg <strong>' + escapeHtml(gv) + '</strong></div>');
+    }
+    if (b.stock_total) greenPills.push('<div class="price-pill green">庫存 <strong>' + escapeHtml(b.stock_total) + '</strong></div>');
+    const pricePills = prices.slice(0,3).map(p=>'<div class="price-pill">' + p.label + ' <strong>' + escapeHtml(p.value) + '</strong></div>').join('');
+    const cardPricesHtml = (greenPills.length || prices.length) ? '<div class="card-prices">' + greenPills.join('') + pricePills + '</div>' : '';
     return `<div class="bean-card ${batchMode?'batch-mode':''}" onclick="${clickFn}" style="position:relative">
       ${cbHtml}${pendingHtml}
       <div class="card-stripe" style="background:${cat.color}"></div>
@@ -1661,13 +1669,7 @@ function render() {
           ${b.process_zh ? `<div class="meta-item"><strong>處理</strong> ${escapeHtml(b.process_zh)}</div>` : ''}
           ${b.varietal ? `<div class="meta-item"><strong>品種</strong> ${escapeHtml(b.varietal)}</div>` : ''}
         </div>
-        ${(()=>{
-          const greenPills = [];
-          if (b.price_green) greenPills.push(`<div class="price-pill green">生豆/kg <strong>${escapeHtml(b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim())}</strong></div>`);
-          if (b.stock_total) greenPills.push(`<div class="price-pill green">庫存 <strong>${escapeHtml(b.stock_total)}</strong></div>`);
-          const pricePills = prices.slice(0,3).map(p=>`<div class="price-pill">${p.label} <strong>${escapeHtml(p.value)}</strong></div>`).join('');
-          return (greenPills.length || prices.length) ? `<div class="card-prices">${greenPills.join('')}${pricePills}</div>` : '';
-        })()}
+        ${cardPricesHtml}
       </div>
       ${renderDesignPips(b.id)}
     </div>`;
