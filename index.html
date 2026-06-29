@@ -497,14 +497,12 @@ header {
   transition: all .15s;
 }
 .btn-copy-info:hover { border-color: var(--gray-70); color: var(--black); }
-.modal-top-bar .btn-edit,
-.modal-top-bar .btn-delist,
-.modal-top-bar .btn-delete {
+.modal-top-bar .btn-edit {
   padding: 5px 12px;
   font-size: 12px;
 }
 .modal-actions { display: none; }
-.btn-edit, .btn-delist, .btn-delete {
+.btn-edit {
   padding: 8px 20px;
   border-radius: var(--radius);
   font-size: 13px;
@@ -516,10 +514,6 @@ header {
   letter-spacing: 0.03em;
 }
 .btn-edit:hover { border-color: var(--gray-70); color: var(--black); }
-.btn-delist { color: #b06a00; border-color: #e8d0a0; }
-.btn-delist:hover { background: #fdf8ed; }
-.btn-delete { color: #c0392b; border-color: #e8b4b0; }
-.btn-delete:hover { background: #fdf2f2; }
 
 /* ── FORM MODAL ── */
 .form-modal { max-width: 720px; }
@@ -1259,8 +1253,6 @@ header {
     <div class="modal-top-bar">
       <button class="btn-copy-info" id="btnCopyInfo" onclick="copyBeanInfo()">複製簡介</button>
       <button class="btn-edit" id="btnEdit" onclick="openEditFromView()">編輯</button>
-      <button class="btn-delist" id="btnDelist" onclick="openDelistConfirm()">下架</button>
-      <button class="btn-delete" id="btnDelete" onclick="openDeleteConfirm()">刪除</button>
       <button class="modal-close" onclick="closeAllModals()">×</button>
     </div>
     <div class="modal-header">
