@@ -467,6 +467,30 @@ header {
 }
 .card-cb.checked { background:var(--black); border-color:var(--black); }
 .card-cb.checked::after { content:"✓"; color:#fff; font-size:11px; }
+.card-x-btn {
+  position:absolute; top:8px; right:8px; z-index:10;
+  width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; border-radius:50%;
+  color:var(--gray-50); font-size:15px; cursor:pointer;
+  opacity:0; transition:opacity .15s, background .15s;
+  line-height:1; padding:0;
+}
+.bean-card:hover .card-x-btn { opacity:1; }
+.card-x-btn:hover { background:var(--gray-10); color:var(--black); }
+#globalCardMenu {
+  display:none; position:fixed; z-index:9999;
+  background:#fff; border:1px solid var(--gray-20);
+  border-radius:6px; overflow:hidden;
+  box-shadow:0 4px 12px rgba(0,0,0,0.12); min-width:90px;
+}
+#globalCardMenu button {
+  display:block; width:100%; padding:8px 16px;
+  background:transparent; border:none; text-align:left;
+  font-size:13px; cursor:pointer; letter-spacing:0.03em;
+}
+#globalCardMenu button:hover { background:var(--gray-08); }
+#globalCardMenu .gcm-delist { color:#b06a00; }
+#globalCardMenu .gcm-delete { color:#c0392b; }
 .modal-close {
   background: none;
   border: none;
@@ -1644,8 +1668,9 @@ function render() {
     if (b.stock_total) greenPills.push('<div class="price-pill green">庫存 <strong>' + escapeHtml(b.stock_total) + '</strong></div>');
     const pricePills = prices.slice(0,3).map(p=>'<div class="price-pill">' + p.label + ' <strong>' + escapeHtml(p.value) + '</strong></div>').join('');
     const cardPricesHtml = (greenPills.length || prices.length) ? '<div class="card-prices">' + greenPills.join('') + pricePills + '</div>' : '';
+    const cardXBtn = batchMode ? '' : '<button class="card-x-btn" onclick="event.stopPropagation();showCardMenu(' + b.id + ',event)" title="下架 / 刪除">×</button>';
     return `<div class="bean-card ${batchMode?'batch-mode':''}" onclick="${clickFn}" style="position:relative">
-      ${cbHtml}${pendingHtml}
+      ${cbHtml}${pendingHtml}${cardXBtn}
       <div class="card-stripe" style="background:${cat.color}"></div>
       <div class="card-body">
         <div class="card-header">
@@ -2021,6 +2046,24 @@ async function saveBean() {
     });
   }
 }
+
+// ── CARD MENU ──
+function showCardMenu(id, event) {
+  viewingId = id;
+  const menu = document.getElementById('globalCardMenu');
+  const rect = event.currentTarget.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.right = (window.innerWidth - rect.right) + 'px';
+  menu.style.left = 'auto';
+  menu.style.display = '';
+}
+function hideCardMenu() {
+  document.getElementById('globalCardMenu').style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('globalCardMenu');
+  if (menu && !menu.contains(e.target)) hideCardMenu();
+});
 
 // ── DELETE ──
 function openDeleteConfirm() {
@@ -2702,5 +2745,10 @@ document.getElementById('ovFilterRow').addEventListener('click', e => {
   renderOverviewTable();
 });
 </script>
+
+<div id="globalCardMenu">
+  <button class="gcm-delist" onclick="hideCardMenu();openDelistConfirm()">下架</button>
+  <button class="gcm-delete" onclick="hideCardMenu();openDeleteConfirm()">刪除</button>
+</div>
 </body>
 </html>
