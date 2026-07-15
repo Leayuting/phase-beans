@@ -2807,6 +2807,7 @@ function renderOverviewTable() {
 
 // ── COST ANALYSIS ──
 const COST_DEFAULTS = {
+  bag_20g:   { label: '20g豆袋',       value: 1.16 },
   bag_half:  { label: '半磅袋',        value: 12 },
   bag_1lb:   { label: '一磅袋',        value: 12 },
   bag_5lb:   { label: '五磅袋',        value: 15 },
@@ -2890,8 +2891,8 @@ function recalcCost() {
 
   const cs = costSettings;
   const specs = [
-    { label: '20g',       grams: 20,  pkg: 0,
-      pkgStr: '—' },
+    { label: '20g',       grams: 20,  pkg: cs.bag_20g + cs.shipping + cs.sticker,
+      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}` },
     { label: '120g',      grams: 120, pkg: cs.bag_half + cs.shipping + cs.sticker,
       pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}` },
     { label: '半磅 227g', grams: 227, pkg: cs.bag_half + cs.shipping + cs.sticker,
