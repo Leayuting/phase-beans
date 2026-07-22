@@ -2136,11 +2136,14 @@ async function saveBean() {
         priceFields.forEach(f => { data.price_previous[f] = oldRow[f] || ''; });
         data.price_updated = true;
       }
-      // 編輯後重設審核狀態，進入待審核
+      // 編輯後重設審核狀態，進入待審核；美編項目全部歸零
       data.pending_review = true;
       data.info_verified = false;
       data.info_verified_date = null;
       data.info_verified_by = null;
+      const resetTasks = {};
+      DEFAULT_DESIGN_TASKS.forEach(t => { resetTasks[t.key] = { label: t.label, done: false }; });
+      data.design_tasks = resetTasks;
       Object.assign(allRows[rowIdx], data);
     }
     const savedId = editingId;
