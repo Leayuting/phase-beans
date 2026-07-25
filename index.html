@@ -1557,6 +1557,10 @@ header {
           <label class="form-label">總庫存量</label>
           <input class="form-input" id="fStockTotal" placeholder="">
         </div>
+        <div class="form-group full">
+          <label class="form-label">報價單（PDF 或圖片）</label>
+          <div id="fQuoteWrap"></div>
+        </div>
         <div class="form-section-title">售價 Pricing（NT$）</div>
         <div class="form-group">
           <label class="form-label">20g</label>
@@ -2063,6 +2067,9 @@ function fillForm(b) {
   document.getElementById('fStockTotal').value = b.stock_total || '';
   document.getElementById('fAwards').value = b.awards || '';
   document.getElementById('fNotes').value = b.notes || '';
+  pendingQuoteFile = null;
+  pendingQuoteRemove = false;
+  renderFormQuote(b.quote_file || null);
 }
 
 function openAddModal() {
@@ -2181,6 +2188,21 @@ async function saveBean() {
       const resetTasks = {};
       DEFAULT_DESIGN_TASKS.forEach(t => { resetTasks[t.key] = { label: t.label, done: false }; });
       data.design_tasks = resetTasks;
+      // 報價單處理
+      if (pendingQuoteRemove && !pendingQuoteFile) {
+        if (oldRow.quote_file) sb.storage.from('bean-quotes').remove([oldRow.quote_file]);
+        data.quote_file = null;
+        pendingQuoteRemove = false;
+      }
+      if (pendingQuoteFile) {
+        if (oldRow.quote_file) sb.storage.from('bean-quotes').remove([oldRow.quote_file]);
+        const ext = pendingQuoteFile.name.split('.').pop().toLowerCase();
+        const qPath = `${editingId}/quote_${Date.now()}.${ext}`;
+        const { error: qErr } = await sb.storage.from('bean-quotes').upload(qPath, pendingQuoteFile, { upsert: true });
+        if (!qErr) data.quote_file = qPath;
+        pendingQuoteFile = null;
+        pendingQuoteRemove = false;
+      }
       Object.assign(allRows[rowIdx], data);
     }
     const savedId = editingId;
@@ -2211,6 +2233,17 @@ async function saveBean() {
     }
     const newRow = allRows[0];
     const newId = newRow && newRow.id;
+    if (pendingQuoteFile && newId) {
+      const ext = pendingQuoteFile.name.split('.').pop().toLowerCase();
+      const qPath = `${newId}/quote_${Date.now()}.${ext}`;
+      const { error: qErr } = await sb.storage.from('bean-quotes').upload(qPath, pendingQuoteFile, { upsert: true });
+      if (!qErr) {
+        newRow.quote_file = qPath;
+        try { await sb.from('beans').update({ quote_file: qPath }).eq('id', newId); } catch(e) {}
+      }
+      pendingQuoteFile = null;
+      pendingQuoteRemove = false;
+    }
     lsSave(allRows); splitRows(); render(); closeAllModals();
     showToast('✓ 已新增', async () => {
       allRows = allRows.filter(r => r.id !== newId);
@@ -3001,6 +3034,46 @@ async function executeRestore() {
 }
 
 // ── QUOTE FILE ──
+let pendingQuoteFile = null;
+let pendingQuoteRemove = false;
+
+function renderFormQuote(existingPath) {
+  const wrap = document.getElementById('fQuoteWrap');
+  if (!wrap) return;
+  if (pendingQuoteFile) {
+    const filename = pendingQuoteFile.name;
+    const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(filename);
+    const thumbHtml = isImg
+      ? `<img src="${URL.createObjectURL(pendingQuoteFile)}" class="quote-thumb" title="預覽">`
+      : `<span style="font-size:26px;flex-shrink:0">📄</span>`;
+    wrap.innerHTML = `<div class="quote-file-wrap">${thumbHtml}<span class="quote-file-link">${escapeHtml(filename)}</span><div class="quote-file-actions"><label class="quote-action-btn">更換<input type="file" accept="image/*,.pdf" style="display:none" onchange="previewFormQuote(event)"></label><button class="quote-action-btn danger" onclick="clearFormQuote()">移除</button></div></div>`;
+  } else if (existingPath) {
+    const { data } = sb.storage.from('bean-quotes').getPublicUrl(existingPath);
+    const filename = existingPath.split('/').pop();
+    const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(filename);
+    const thumbHtml = isImg
+      ? `<img src="${data.publicUrl}" class="quote-thumb" onclick="window.open('${data.publicUrl}')" title="點擊放大">`
+      : `<span style="font-size:26px;flex-shrink:0">📄</span>`;
+    wrap.innerHTML = `<div class="quote-file-wrap">${thumbHtml}<a href="${data.publicUrl}" target="_blank" class="quote-file-link">${escapeHtml(filename)}</a><div class="quote-file-actions"><label class="quote-action-btn">更換<input type="file" accept="image/*,.pdf" style="display:none" onchange="previewFormQuote(event)"></label><button class="quote-action-btn danger" onclick="clearFormQuote()">移除</button></div></div>`;
+  } else {
+    wrap.innerHTML = `<label class="quote-upload-label"><input type="file" accept="image/*,.pdf" style="display:none" onchange="previewFormQuote(event)">＋ 上傳報價單（PDF 或圖片）</label>`;
+  }
+}
+
+function previewFormQuote(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  pendingQuoteFile = file;
+  pendingQuoteRemove = false;
+  renderFormQuote(null);
+}
+
+function clearFormQuote() {
+  pendingQuoteFile = null;
+  pendingQuoteRemove = true;
+  renderFormQuote(null);
+}
+
 function renderQuoteSection(b) {
   const content = document.getElementById('quoteContent');
   const filenameEl = document.getElementById('quoteFilename');
