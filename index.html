@@ -1233,6 +1233,35 @@ header {
 }
 .cost-setting-input:focus { border-color:var(--gray-70); }
 .cost-nt { font-size:10px; color:var(--gray-50); }
+
+/* ── QUOTE FILE ── */
+.quote-upload-label {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 16px; border: 1.5px dashed var(--gray-20); border-radius: 6px;
+  cursor: pointer; font-size: 12px; color: var(--gray-50); transition: all .15s;
+  user-select: none;
+}
+.quote-upload-label:hover { border-color: var(--gray-70); color: var(--black); background: var(--gray-08); }
+.quote-file-wrap { display: flex; align-items: center; gap: 10px; }
+.quote-thumb {
+  width: 60px; height: 60px; object-fit: cover; flex-shrink: 0;
+  border-radius: 4px; border: 1px solid var(--gray-20); cursor: pointer;
+}
+.quote-file-link {
+  flex: 1; font-size: 13px; color: var(--black);
+  text-decoration: none; display: flex; align-items: center; gap: 6px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.quote-file-link:hover { text-decoration: underline; }
+.quote-file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.quote-action-btn {
+  padding: 4px 10px; font-size: 11px; border: 1px solid var(--gray-20);
+  border-radius: var(--radius); background: #fff; cursor: pointer;
+  color: var(--gray-70); transition: all .12s; white-space: nowrap;
+}
+.quote-action-btn:hover { border-color: var(--gray-70); color: var(--black); }
+.quote-action-btn.danger { color: #c0392b; border-color: #dab8b8; }
+.quote-action-btn.danger:hover { background: #fdf0f0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1381,6 +1410,13 @@ header {
       <div class="modal-section" id="vGreenSection" style="display:none">
         <div class="section-label">生豆資訊</div>
         <div class="green-info-section" id="vGreenInfo"></div>
+      </div>
+      <div class="modal-section" id="vQuoteSection">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          報價單
+          <span id="quoteFilename" style="font-size:11px;color:var(--gray-50);font-weight:400;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        </div>
+        <div id="quoteContent"></div>
       </div>
       <div class="modal-section" id="vPriceSection">
         <div class="section-label">價格 Pricing</div>
@@ -1915,6 +1951,7 @@ function openViewModal(id) {
   document.getElementById('viewModalOverlay').classList.add('open');
   renderDesignTasksForBean(id);
   const row = allRows.find(r => Number(r.id) === id);
+  renderQuoteSection(row);
   updateInfoVerifyButton(row && row.info_verified);
   const dateEl = document.getElementById('infoVerifyDate');
   if (dateEl) dateEl.value = (row && row.info_verified_date) || '';
@@ -2961,6 +2998,72 @@ async function executeRestore() {
     showToast('⚠ 還原失敗：' + e.message);
     pendingRestoreData = null;
   }
+}
+
+// ── QUOTE FILE ──
+function renderQuoteSection(b) {
+  const content = document.getElementById('quoteContent');
+  const filenameEl = document.getElementById('quoteFilename');
+  if (!content) return;
+  if (b && b.quote_file) {
+    const { data } = sb.storage.from('bean-quotes').getPublicUrl(b.quote_file);
+    const url = data.publicUrl;
+    const filename = b.quote_file.split('/').pop();
+    if (filenameEl) filenameEl.textContent = filename;
+    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(filename);
+    const preview = isImage
+      ? `<img src="${url}" class="quote-thumb" onclick="window.open('${url}')" title="點擊放大">`
+      : `<span style="font-size:28px;flex-shrink:0">📄</span>`;
+    content.innerHTML = `
+      <div class="quote-file-wrap">
+        ${preview}
+        <a href="${url}" target="_blank" class="quote-file-link">${escapeHtml(filename)}</a>
+        <div class="quote-file-actions">
+          <label class="quote-action-btn">更換<input type="file" accept="image/*,.pdf" style="display:none" onchange="handleQuoteUpload(event)"></label>
+          <button class="quote-action-btn danger" onclick="deleteQuoteFile()">移除</button>
+        </div>
+      </div>`;
+  } else {
+    if (filenameEl) filenameEl.textContent = '';
+    content.innerHTML = `
+      <label class="quote-upload-label">
+        <input type="file" accept="image/*,.pdf" style="display:none" onchange="handleQuoteUpload(event)">
+        ＋ 上傳報價單（PDF 或圖片）
+      </label>`;
+  }
+}
+
+async function handleQuoteUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  showToast('上傳中…');
+  if (row.quote_file) {
+    await sb.storage.from('bean-quotes').remove([row.quote_file]);
+  }
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `${id}/quote_${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('bean-quotes').upload(path, file, { upsert: true });
+  if (error) { showToast('⚠ 上傳失敗：' + error.message); return; }
+  row.quote_file = path;
+  lsSave(allRows);
+  try { await sb.from('beans').update({ quote_file: path }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  renderQuoteSection(row);
+  showToast('✓ 報價單已上傳');
+}
+
+async function deleteQuoteFile() {
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row || !row.quote_file) return;
+  await sb.storage.from('bean-quotes').remove([row.quote_file]);
+  row.quote_file = null;
+  lsSave(allRows);
+  try { await sb.from('beans').update({ quote_file: null }).eq('id', id); } catch(e) { setSyncStatus('local'); }
+  renderQuoteSection(row);
+  showToast('✓ 報價單已移除');
 }
 
 // ── COST ANALYSIS ──
