@@ -1234,6 +1234,63 @@ header {
 .cost-setting-input:focus { border-color:var(--gray-70); }
 .cost-nt { font-size:10px; color:var(--gray-50); }
 
+/* ── BLEND RECIPE ── */
+#fBlendSection .form-label { display:flex; align-items:center; gap:8px; }
+.blend-sum-badge {
+  font-size:11px; font-weight:600; padding:1px 7px; border-radius:10px;
+  background:var(--gray-20); color:var(--gray-70); transition:all .15s;
+}
+.blend-sum-badge.ok   { background:#d4f0e2; color:#256840; }
+.blend-sum-badge.over { background:#fde8e8; color:#b02020; }
+.blend-sum-badge.under{ background:#fef3cd; color:#7a5200; }
+.blend-row {
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+}
+.blend-bean-select {
+  flex:1; min-width:0; padding:6px 8px; border:1px solid var(--gray-20);
+  border-radius:var(--radius); font-size:13px; background:#fff; outline:none;
+}
+.blend-bean-select:focus { border-color:var(--gray-70); }
+.blend-ratio-input {
+  width:56px; padding:6px 8px; border:1px solid var(--gray-20);
+  border-radius:var(--radius); font-size:13px; text-align:right; outline:none;
+}
+.blend-ratio-input:focus { border-color:var(--gray-70); }
+.blend-ratio-unit { font-size:12px; color:var(--gray-50); flex-shrink:0; }
+.blend-remove-btn {
+  width:24px; height:24px; flex-shrink:0; border:none; background:none;
+  color:var(--gray-50); font-size:16px; cursor:pointer; border-radius:4px;
+  display:flex; align-items:center; justify-content:center; padding:0;
+}
+.blend-remove-btn:hover { color:#c0392b; background:#fdf0f0; }
+.blend-add-btn {
+  margin-top:4px; padding:5px 12px; font-size:12px; border:1px dashed var(--gray-20);
+  border-radius:var(--radius); background:transparent; color:var(--gray-70);
+  cursor:pointer; width:100%; letter-spacing:0.03em; transition:all .15s;
+}
+.blend-add-btn:hover { border-color:var(--gray-70); color:var(--black); }
+.blend-cost-preview {
+  display:none; margin-top:8px; padding:8px 10px;
+  background:#f0f7f4; border:1px solid #c8e6d8; border-radius:6px;
+  font-size:12px; color:#3a7a5a; letter-spacing:0.02em;
+}
+.blend-cost-preview strong { font-size:14px; }
+/* view modal recipe table */
+.blend-view-table {
+  width:100%; border-collapse:collapse; font-size:12px;
+}
+.blend-view-table th {
+  font-size:10px; letter-spacing:0.08em; color:var(--gray-50);
+  text-align:left; padding:4px 6px; border-bottom:1px solid var(--gray-20);
+}
+.blend-view-table td { padding:7px 6px; border-bottom:1px solid var(--gray-08); }
+.blend-view-table tfoot td { border-top:1px solid var(--gray-20); border-bottom:none; }
+.blend-view-name { color:var(--black); font-weight:500; }
+.blend-view-ratio { color:var(--gray-70); }
+.blend-view-price { color:var(--gray-70); }
+.blend-view-contrib { color:var(--black); }
+.blend-view-total { color:#2e7d52; font-weight:700; font-size:13px; }
+
 /* ── QUOTE FILE ── */
 .quote-upload-label {
   display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -1411,6 +1468,10 @@ header {
         <div class="section-label">生豆資訊</div>
         <div class="green-info-section" id="vGreenInfo"></div>
       </div>
+      <div class="modal-section" id="vBlendSection" style="display:none">
+        <div class="section-label">配方組成 Recipe</div>
+        <div id="vBlendRecipe"></div>
+      </div>
       <div class="modal-section" id="vQuoteSection">
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
           報價單
@@ -1487,7 +1548,7 @@ header {
       <div class="form-grid">
         <div class="form-group full">
           <label class="form-label">分類 Category *</label>
-          <select class="form-select" id="fCat">
+          <select class="form-select" id="fCat" onchange="onCatChange()">
             <option value="G">G — 蜜處理・日曬 Honey & Natural</option>
             <option value="Y">Y — 水洗 Washed</option>
             <option value="P">P — 自然發酵 Natural Fermentation</option>
@@ -1549,9 +1610,15 @@ header {
           <input class="form-input" id="fVarietal" placeholder="Heirloom">
         </div>
         <div class="form-section-title">生豆資訊</div>
-        <div class="form-group">
+        <div class="form-group" id="fGreenPriceGroup">
           <label class="form-label">生豆價格 / KG</label>
           <input class="form-input" id="fPriceGreen" placeholder="">
+        </div>
+        <div class="form-group full" id="fBlendSection" style="display:none">
+          <label class="form-label">配方組成 <span id="blendSumBadge" class="blend-sum-badge">0%</span></label>
+          <div id="blendRows"></div>
+          <button type="button" class="blend-add-btn" onclick="addBlendRow()">＋ 加入生豆</button>
+          <div class="blend-cost-preview" id="blendCostPreview"></div>
         </div>
         <div class="form-group">
           <label class="form-label">總庫存量</label>
@@ -1919,13 +1986,26 @@ function openViewModal(id) {
   // 生豆資訊
   const greenSec = document.getElementById('vGreenSection');
   const greenInfo = document.getElementById('vGreenInfo');
-  const greenItems = [];
-  if (b.price_green) greenItems.push({label:'生豆價格 / KG', value: b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim(), unit:'NT$'});
-  if (b.stock_total) greenItems.push({label:'總庫存量', value: b.stock_total, unit:''});
-  if (greenItems.length) {
-    greenSec.style.display = '';
-    greenInfo.innerHTML = greenItems.map(g=>`<div class="green-info-item"><div class="green-info-label">${g.label}</div><div class="green-info-value">${g.unit?`<small>${g.unit} </small>`:''}${escapeHtml(g.value)}</div></div>`).join('');
-  } else greenSec.style.display = 'none';
+  const blendSec = document.getElementById('vBlendSection');
+  const greenItemsRow = (items) => items.map(g=>`<div class="green-info-item"><div class="green-info-label">${g.label}</div><div class="green-info-value">${g.unit?`<small>${g.unit} </small>`:''}${escapeHtml(g.value)}</div></div>`).join('');
+
+  if (b.category_code === 'X' && b.blend_recipe && b.blend_recipe.length) {
+    blendSec.style.display = '';
+    renderViewBlendRecipe(b.blend_recipe, document.getElementById('vBlendRecipe'));
+    const computed = calcBlendGreenPrice(b.blend_recipe);
+    const greenItems = [];
+    if (computed != null) greenItems.push({label:'加權平均生豆成本', value: String(computed), unit:'NT$'});
+    if (b.stock_total) greenItems.push({label:'總庫存量', value: b.stock_total, unit:''});
+    if (greenItems.length) { greenSec.style.display = ''; greenInfo.innerHTML = greenItemsRow(greenItems); }
+    else greenSec.style.display = 'none';
+  } else {
+    if (blendSec) blendSec.style.display = 'none';
+    const greenItems = [];
+    if (b.price_green) greenItems.push({label:'生豆價格 / KG', value: b.price_green.replace(/[（(][^)）]*[)）]/g,'').trim(), unit:'NT$'});
+    if (b.stock_total) greenItems.push({label:'總庫存量', value: b.stock_total, unit:''});
+    if (greenItems.length) { greenSec.style.display = ''; greenInfo.innerHTML = greenItemsRow(greenItems); }
+    else greenSec.style.display = 'none';
+  }
 
   const prices = getPriceItems(b);
   const priceEl = document.getElementById('vPriceSection');
@@ -2070,6 +2150,11 @@ function fillForm(b) {
   pendingQuoteFile = null;
   pendingQuoteRemove = false;
   renderFormQuote(b.quote_file || null);
+  const isBlend = (b.category_code === 'X');
+  document.getElementById('fGreenPriceGroup').style.display = isBlend ? 'none' : '';
+  document.getElementById('fBlendSection').style.display = isBlend ? '' : 'none';
+  if (isBlend) renderBlendRows(b.blend_recipe || []);
+  else document.getElementById('blendRows').innerHTML = '';
 }
 
 function openAddModal() {
@@ -2140,6 +2225,14 @@ async function saveBean() {
   const catMeta = CAT_META[cat];
   const splitFlavors = (str) => str ? str.split(/[｜|,，]/).map(s=>s.trim()).filter(Boolean) : [];
 
+  // 配方豆驗證
+  if (cat === 'X') {
+    const recipe = getBlendRecipe();
+    if (!recipe.length) { showToast('⚠ 請至少加入一支生豆'); return; }
+    const sum = recipe.reduce((acc, r) => acc + r.ratio, 0);
+    if (Math.abs(sum - 100) > 0.01) { showToast(`⚠ 比例合計需為 100%（目前 ${Math.round(sum * 10) / 10}%）`); return; }
+  }
+
   const priceFields = ['price_20g','price_120g','price_half','price_1lb','price_drip','price_cup'];
   const data = {
     category_code: cat,
@@ -2157,7 +2250,8 @@ async function saveBean() {
     process_en: document.getElementById('fProcessEn').value.trim(),
     altitude: document.getElementById('fAltitude').value.trim(),
     varietal: document.getElementById('fVarietal').value.trim(),
-    price_green: document.getElementById('fPriceGreen').value.trim(),
+    price_green: cat === 'X' ? (() => { const c = calcBlendGreenPrice(getBlendRecipe()); return c != null ? String(c) : ''; })() : document.getElementById('fPriceGreen').value.trim(),
+    blend_recipe: cat === 'X' ? getBlendRecipe() : null,
     stock_total: document.getElementById('fStockTotal').value.trim(),
     price_20g: document.getElementById('fPrice20g').value.trim(),
     price_120g: document.getElementById('fPrice120g').value.trim(),
@@ -3139,6 +3233,137 @@ async function deleteQuoteFile() {
   showToast('✓ 報價單已移除');
 }
 
+// ── BLEND RECIPE ──
+function calcBlendGreenPrice(recipe) {
+  if (!recipe || !recipe.length) return null;
+  let total = 0, ratioSum = 0;
+  for (const item of recipe) {
+    const src = allRows.find(r => Number(r.id) === Number(item.bean_id) && !r.deleted_at && !r.delisted_at);
+    const price = src ? parseFloat((src.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim()) : NaN;
+    if (isNaN(price) || price <= 0) return null;
+    total += price * (item.ratio / 100);
+    ratioSum += item.ratio;
+  }
+  if (Math.abs(ratioSum - 100) > 0.01) return null;
+  return Math.round(total * 10) / 10;
+}
+
+function onCatChange() {
+  const isBlend = document.getElementById('fCat').value === 'X';
+  document.getElementById('fGreenPriceGroup').style.display = isBlend ? 'none' : '';
+  document.getElementById('fBlendSection').style.display = isBlend ? '' : 'none';
+  if (isBlend && !document.querySelector('#blendRows .blend-row')) addBlendRow();
+  else if (isBlend) updateBlendSum();
+}
+
+function populateBlendBeanSelect(sel, selectedId) {
+  const options = allRows
+    .filter(r => !r.deleted_at && !r.delisted_at && r.category_code !== 'X')
+    .sort((a, b) => (a.name_zh || '').localeCompare(b.name_zh || '', 'zh'));
+  sel.innerHTML = '<option value="">選擇生豆…</option>' +
+    options.map(r => `<option value="${r.id}"${Number(r.id) === Number(selectedId) ? ' selected' : ''}>${escapeHtml(r.name_zh || '')}${r.price_green ? ` (NT$ ${r.price_green}/kg)` : ''}</option>`).join('');
+}
+
+function renderBlendRows(recipe) {
+  const container = document.getElementById('blendRows');
+  if (!container) return;
+  if (!recipe || !recipe.length) { container.innerHTML = ''; addBlendRow(); return; }
+  container.innerHTML = recipe.map((item, idx) => `
+    <div class="blend-row" data-idx="${idx}">
+      <select class="blend-bean-select" onchange="updateBlendSum()"></select>
+      <input class="blend-ratio-input" type="number" min="1" max="100" step="1" value="${item.ratio || ''}" placeholder="%" oninput="updateBlendSum()">
+      <span class="blend-ratio-unit">%</span>
+      <button class="blend-remove-btn" onclick="removeBlendRow(this)" title="移除">×</button>
+    </div>`).join('');
+  container.querySelectorAll('.blend-bean-select').forEach((sel, idx) => {
+    populateBlendBeanSelect(sel, recipe[idx].bean_id);
+  });
+  updateBlendSum();
+}
+
+function addBlendRow() {
+  const container = document.getElementById('blendRows');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'blend-row';
+  div.innerHTML = `
+    <select class="blend-bean-select" onchange="updateBlendSum()"></select>
+    <input class="blend-ratio-input" type="number" min="1" max="100" step="1" placeholder="%" oninput="updateBlendSum()">
+    <span class="blend-ratio-unit">%</span>
+    <button class="blend-remove-btn" onclick="removeBlendRow(this)" title="移除">×</button>`;
+  container.appendChild(div);
+  populateBlendBeanSelect(div.querySelector('.blend-bean-select'), null);
+  updateBlendSum();
+}
+
+function removeBlendRow(btn) {
+  btn.closest('.blend-row').remove();
+  updateBlendSum();
+}
+
+function updateBlendSum() {
+  let sum = 0;
+  document.querySelectorAll('#blendRows .blend-ratio-input').forEach(inp => {
+    const v = parseFloat(inp.value); if (!isNaN(v)) sum += v;
+  });
+  const badge = document.getElementById('blendSumBadge');
+  if (badge) {
+    badge.textContent = sum + '%';
+    badge.className = 'blend-sum-badge ' + (Math.abs(sum - 100) < 0.01 ? 'ok' : sum > 100 ? 'over' : 'under');
+  }
+  const recipe = getBlendRecipe();
+  const computed = calcBlendGreenPrice(recipe);
+  const preview = document.getElementById('blendCostPreview');
+  if (preview) {
+    if (computed != null && Math.abs(sum - 100) < 0.01) {
+      preview.innerHTML = `加權平均生豆成本：<strong>NT$ ${computed} / kg</strong>`;
+      preview.style.display = '';
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+}
+
+function getBlendRecipe() {
+  const result = [];
+  document.querySelectorAll('#blendRows .blend-row').forEach(row => {
+    const sel = row.querySelector('.blend-bean-select');
+    const inp = row.querySelector('.blend-ratio-input');
+    const beanId = sel && sel.value ? Number(sel.value) : null;
+    const ratio = inp ? parseFloat(inp.value) : NaN;
+    if (beanId && !isNaN(ratio) && ratio > 0) {
+      const bean = allRows.find(r => Number(r.id) === beanId);
+      result.push({ bean_id: beanId, name_zh: bean ? (bean.name_zh || '') : '', ratio });
+    }
+  });
+  return result;
+}
+
+function renderViewBlendRecipe(recipe, el) {
+  if (!recipe || !recipe.length) { el.innerHTML = '—'; return; }
+  const rows = recipe.map(item => {
+    const src = allRows.find(r => Number(r.id) === Number(item.bean_id) && !r.deleted_at && !r.delisted_at);
+    const price = src ? parseFloat((src.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim()) : NaN;
+    const priceStr = !isNaN(price) && price > 0 ? `NT$ ${price}` : '—';
+    const contrib = !isNaN(price) && price > 0 ? `NT$ ${(price * item.ratio / 100).toFixed(1)}` : '—';
+    return `<tr>
+      <td class="blend-view-name">${escapeHtml(item.name_zh || '')}</td>
+      <td class="blend-view-ratio">${item.ratio}%</td>
+      <td class="blend-view-price">${priceStr}</td>
+      <td class="blend-view-contrib">${contrib}</td>
+    </tr>`;
+  });
+  const total = calcBlendGreenPrice(recipe);
+  el.innerHTML = `<table class="blend-view-table">
+    <thead><tr><th>生豆</th><th>比例</th><th>成本/kg</th><th>加權</th></tr></thead>
+    <tbody>${rows.join('')}</tbody>
+    <tfoot><tr>
+      <td colspan="3" style="text-align:right;font-size:11px;color:var(--gray-50);padding:7px 6px">加權平均</td>
+      <td class="blend-view-total">${total != null ? `NT$ ${total}` : '—'}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
 // ── COST ANALYSIS ──
 const COST_DEFAULTS = {
   bag_20g:   { label: '20g豆袋',       value: 1.16 },
@@ -3209,8 +3434,12 @@ function recalcCost() {
   const tbody = document.getElementById('costTableBody');
   if (!perGramEl || !tbody) return;
 
-  const rawPrice = b ? (b.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim() : '';
-  const priceGreen = parseFloat(rawPrice);
+  let priceGreen;
+  if (b && b.category_code === 'X' && b.blend_recipe && b.blend_recipe.length) {
+    priceGreen = calcBlendGreenPrice(b.blend_recipe) || NaN;
+  } else {
+    priceGreen = parseFloat(b ? (b.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim() : '');
+  }
   const yieldEl = document.getElementById('costYield');
   const yieldVal = parseFloat(yieldEl ? yieldEl.value : 0.8) || 0.8;
 
