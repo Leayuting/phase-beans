@@ -1246,11 +1246,20 @@ header {
 .blend-row {
   display:flex; align-items:center; gap:8px; margin-bottom:6px;
 }
-.blend-bean-select {
+.blend-name-input {
   flex:1; min-width:0; padding:6px 8px; border:1px solid var(--gray-20);
-  border-radius:var(--radius); font-size:13px; background:#fff; outline:none;
+  border-radius:var(--radius); font-size:13px; outline:none;
 }
-.blend-bean-select:focus { border-color:var(--gray-70); }
+.blend-name-input:focus { border-color:var(--gray-70); }
+.blend-price-input {
+  width:80px; flex-shrink:0; padding:6px 8px; border:1px solid var(--gray-20);
+  border-radius:var(--radius); font-size:13px; text-align:right; outline:none;
+}
+.blend-price-input:focus { border-color:var(--gray-70); }
+.blend-col-header {
+  display:flex; gap:8px; font-size:10px; letter-spacing:0.06em;
+  color:var(--gray-50); margin-bottom:4px; padding:0 2px;
+}
 .blend-ratio-input {
   width:56px; padding:6px 8px; border:1px solid var(--gray-20);
   border-radius:var(--radius); font-size:13px; text-align:right; outline:none;
@@ -1616,6 +1625,12 @@ header {
         </div>
         <div class="form-group full" id="fBlendSection" style="display:none">
           <label class="form-label">配方組成 <span id="blendSumBadge" class="blend-sum-badge">0%</span></label>
+          <div class="blend-col-header">
+            <span style="flex:1">生豆名稱</span>
+            <span style="width:80px;text-align:right">NT$/kg</span>
+            <span style="width:56px;text-align:right">比例</span>
+            <span style="width:24px"></span>
+          </div>
           <div id="blendRows"></div>
           <button type="button" class="blend-add-btn" onclick="addBlendRow()">＋ 加入生豆</button>
           <div class="blend-cost-preview" id="blendCostPreview"></div>
@@ -3238,8 +3253,7 @@ function calcBlendGreenPrice(recipe) {
   if (!recipe || !recipe.length) return null;
   let total = 0, ratioSum = 0;
   for (const item of recipe) {
-    const src = allRows.find(r => Number(r.id) === Number(item.bean_id) && !r.deleted_at && !r.delisted_at);
-    const price = src ? parseFloat((src.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim()) : NaN;
+    const price = parseFloat(item.price_per_kg);
     if (isNaN(price) || price <= 0) return null;
     total += price * (item.ratio / 100);
     ratioSum += item.ratio;
@@ -3256,28 +3270,18 @@ function onCatChange() {
   else if (isBlend) updateBlendSum();
 }
 
-function populateBlendBeanSelect(sel, selectedId) {
-  const options = allRows
-    .filter(r => !r.deleted_at && !r.delisted_at && r.category_code !== 'X')
-    .sort((a, b) => (a.name_zh || '').localeCompare(b.name_zh || '', 'zh'));
-  sel.innerHTML = '<option value="">選擇生豆…</option>' +
-    options.map(r => `<option value="${r.id}"${Number(r.id) === Number(selectedId) ? ' selected' : ''}>${escapeHtml(r.name_zh || '')}${r.price_green ? ` (NT$ ${r.price_green}/kg)` : ''}</option>`).join('');
-}
-
 function renderBlendRows(recipe) {
   const container = document.getElementById('blendRows');
   if (!container) return;
   if (!recipe || !recipe.length) { container.innerHTML = ''; addBlendRow(); return; }
   container.innerHTML = recipe.map((item, idx) => `
     <div class="blend-row" data-idx="${idx}">
-      <select class="blend-bean-select" onchange="updateBlendSum()"></select>
+      <input class="blend-name-input" type="text" value="${escapeHtml(item.name || item.name_zh || '')}" placeholder="生豆名稱" oninput="updateBlendSum()">
+      <input class="blend-price-input" type="number" min="0" step="1" value="${item.price_per_kg || ''}" placeholder="NT$/kg" oninput="updateBlendSum()">
       <input class="blend-ratio-input" type="number" min="1" max="100" step="1" value="${item.ratio || ''}" placeholder="%" oninput="updateBlendSum()">
       <span class="blend-ratio-unit">%</span>
       <button class="blend-remove-btn" onclick="removeBlendRow(this)" title="移除">×</button>
     </div>`).join('');
-  container.querySelectorAll('.blend-bean-select').forEach((sel, idx) => {
-    populateBlendBeanSelect(sel, recipe[idx].bean_id);
-  });
   updateBlendSum();
 }
 
@@ -3287,12 +3291,13 @@ function addBlendRow() {
   const div = document.createElement('div');
   div.className = 'blend-row';
   div.innerHTML = `
-    <select class="blend-bean-select" onchange="updateBlendSum()"></select>
+    <input class="blend-name-input" type="text" placeholder="生豆名稱" oninput="updateBlendSum()">
+    <input class="blend-price-input" type="number" min="0" step="1" placeholder="NT$/kg" oninput="updateBlendSum()">
     <input class="blend-ratio-input" type="number" min="1" max="100" step="1" placeholder="%" oninput="updateBlendSum()">
     <span class="blend-ratio-unit">%</span>
     <button class="blend-remove-btn" onclick="removeBlendRow(this)" title="移除">×</button>`;
   container.appendChild(div);
-  populateBlendBeanSelect(div.querySelector('.blend-bean-select'), null);
+  div.querySelector('.blend-name-input').focus();
   updateBlendSum();
 }
 
@@ -3327,13 +3332,11 @@ function updateBlendSum() {
 function getBlendRecipe() {
   const result = [];
   document.querySelectorAll('#blendRows .blend-row').forEach(row => {
-    const sel = row.querySelector('.blend-bean-select');
-    const inp = row.querySelector('.blend-ratio-input');
-    const beanId = sel && sel.value ? Number(sel.value) : null;
-    const ratio = inp ? parseFloat(inp.value) : NaN;
-    if (beanId && !isNaN(ratio) && ratio > 0) {
-      const bean = allRows.find(r => Number(r.id) === beanId);
-      result.push({ bean_id: beanId, name_zh: bean ? (bean.name_zh || '') : '', ratio });
+    const name = (row.querySelector('.blend-name-input').value || '').trim();
+    const price_per_kg = parseFloat(row.querySelector('.blend-price-input').value);
+    const ratio = parseFloat(row.querySelector('.blend-ratio-input').value);
+    if (name && !isNaN(price_per_kg) && price_per_kg > 0 && !isNaN(ratio) && ratio > 0) {
+      result.push({ name, price_per_kg, ratio });
     }
   });
   return result;
@@ -3342,12 +3345,11 @@ function getBlendRecipe() {
 function renderViewBlendRecipe(recipe, el) {
   if (!recipe || !recipe.length) { el.innerHTML = '—'; return; }
   const rows = recipe.map(item => {
-    const src = allRows.find(r => Number(r.id) === Number(item.bean_id) && !r.deleted_at && !r.delisted_at);
-    const price = src ? parseFloat((src.price_green || '').replace(/[（(][^)）]*[)）]/g, '').trim()) : NaN;
+    const price = parseFloat(item.price_per_kg);
     const priceStr = !isNaN(price) && price > 0 ? `NT$ ${price}` : '—';
     const contrib = !isNaN(price) && price > 0 ? `NT$ ${(price * item.ratio / 100).toFixed(1)}` : '—';
     return `<tr>
-      <td class="blend-view-name">${escapeHtml(item.name_zh || '')}</td>
+      <td class="blend-view-name">${escapeHtml(item.name || item.name_zh || '')}</td>
       <td class="blend-view-ratio">${item.ratio}%</td>
       <td class="blend-view-price">${priceStr}</td>
       <td class="blend-view-contrib">${contrib}</td>
