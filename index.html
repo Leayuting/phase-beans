@@ -2291,14 +2291,22 @@ async function saveBean() {
         priceFields.forEach(f => { data.price_previous[f] = oldRow[f] || ''; });
         data.price_updated = true;
       }
-      // 編輯後重設審核狀態，進入待審核；美編項目全部歸零
-      data.pending_review = true;
-      data.info_verified = false;
-      data.info_verified_date = null;
-      data.info_verified_by = null;
-      const resetTasks = {};
-      DEFAULT_DESIGN_TASKS.forEach(t => { resetTasks[t.key] = { label: t.label, done: false }; });
-      data.design_tasks = resetTasks;
+      // 只有核心資訊欄位異動才重設審核（售價欄位不觸發）
+      const reviewFields = ['category_code','name_zh','name_en','roast_zh','roast_en',
+        'region_zh','region_en','process_zh','process_en','altitude','varietal',
+        'price_green','stock_total'];
+      const arrChanged = ['flavors_zh','flavors_en'].some(f =>
+        JSON.stringify(data[f]||[]) !== JSON.stringify(oldRow[f]||[]));
+      const coreChanged = reviewFields.some(f => (data[f]||'') !== (oldRow[f]||'')) || arrChanged;
+      if (coreChanged) {
+        data.pending_review = true;
+        data.info_verified = false;
+        data.info_verified_date = null;
+        data.info_verified_by = null;
+        const resetTasks = {};
+        DEFAULT_DESIGN_TASKS.forEach(t => { resetTasks[t.key] = { label: t.label, done: false }; });
+        data.design_tasks = resetTasks;
+      }
       // 報價單處理
       if (pendingQuoteRemove && !pendingQuoteFile) {
         if (oldRow.quote_file) sb.storage.from('bean-quotes').remove([oldRow.quote_file]);
