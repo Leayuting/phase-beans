@@ -1492,10 +1492,6 @@ header {
         <div class="section-label">價格 Pricing</div>
         <div class="price-grid" id="vPrices"></div>
       </div>
-      <div class="modal-section" id="vWholesaleSection" style="display:none">
-        <div class="section-label" style="display:flex;align-items:center;gap:8px">批發價 <span style="font-size:10px;color:var(--gray-50);font-weight:400;letter-spacing:0.02em">售價 × 50%</span></div>
-        <div class="price-grid" id="vWholesalePrices"></div>
-      </div>
       <div class="modal-section" id="vPrevPriceSection" style="display:none">
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">前次售價 <span class="price-updated-badge">已更新</span><button onclick="clearPriceHistory()" style="font-size:11px;padding:2px 8px;border:1px solid var(--gray-20);border-radius:4px;background:#fff;cursor:pointer;color:var(--gray-50)">清除紀錄</button></div>
         <div class="price-grid" id="vPrevPrices"></div>
@@ -1516,7 +1512,7 @@ header {
         </div>
         <div class="cost-per-gram" id="costPerGram">—</div>
         <table class="cost-table">
-          <thead><tr><th>規格</th><th>豆成本</th><th>包材</th><th>總成本</th></tr></thead>
+          <thead><tr><th>規格</th><th>豆成本</th><th>包材</th><th>總成本</th><th>批發價</th></tr></thead>
           <tbody id="costTableBody"></tbody>
         </table>
         <div class="cost-settings-panel" id="costSettingsPanel">
@@ -2035,20 +2031,8 @@ function openViewModal(id) {
         <div class="price-label">${p.label}</div>
         <div class="price-value">${escapeHtml(p.value.replace('NT$',''))}<small> NT$</small></div>
       </div>`).join('');
-    // 批發價：售價 × 50%
-    const wholeSec = document.getElementById('vWholesaleSection');
-    document.getElementById('vWholesalePrices').innerHTML = prices.map(p => {
-      const num = parseFloat(p.value.replace('NT$',''));
-      const wholesale = isNaN(num) ? '—' : Math.round(num * 0.5);
-      return `<div class="price-box" style="background:#f4f4f4">
-        <div class="price-label">${p.label}</div>
-        <div class="price-value" style="color:var(--gray-70)">${wholesale}<small> NT$</small></div>
-      </div>`;
-    }).join('');
-    wholeSec.style.display = '';
   } else {
     priceEl.style.display = 'none';
-    document.getElementById('vWholesaleSection').style.display = 'none';
   }
 
   const notesEl = document.getElementById('vNotesSection');
@@ -3465,7 +3449,7 @@ function recalcCost() {
 
   if (!b || isNaN(priceGreen) || priceGreen <= 0) {
     perGramEl.innerHTML = '<span style="color:var(--gray-50)">生豆價格未填，無法計算</span>';
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--gray-50);text-align:center;padding:12px">—</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--gray-50);text-align:center;padding:12px">—</td></tr>';
     return;
   }
 
@@ -3475,27 +3459,30 @@ function recalcCost() {
   const cs = costSettings;
   const specs = [
     { label: '20g',       grams: 20,  pkg: cs.bag_20g + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_20g' },
     { label: '120g',      grams: 120, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_120g' },
     { label: '半磅 227g', grams: 227, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_half' },
     { label: '一磅 450g', grams: 450, pkg: cs.bag_1lb + cs.shipping,
-      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}` },
+      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb' },
     { label: '濾掛 10g',  grams: 10,  pkg: cs.drip_pkg,
-      pkgStr: `包材${cs.drip_pkg}` },
+      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip' },
     { label: '單杯 20g',  grams: 20,  pkg: cs.cup_pkg,
-      pkgStr: `杯${cs.cup_pkg}` },
+      pkgStr: `杯${cs.cup_pkg}`, priceField: 'price_cup' },
   ];
 
   tbody.innerHTML = specs.map(s => {
     const beanCost = s.grams * cpg;
     const total = beanCost + s.pkg;
+    const sellPrice = parseFloat(b[s.priceField] || '');
+    const wholesale = !isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : '—';
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
       <td style="font-size:11px;color:var(--gray-50)">${s.pkg > 0 ? s.pkgStr : '—'}</td>
       <td class="cost-total">NT$ ${Math.round(total)}</td>
+      <td style="color:var(--gray-70)">${wholesale !== '—' ? `NT$ ${wholesale}` : '—'}</td>
     </tr>`;
   }).join('');
 }
