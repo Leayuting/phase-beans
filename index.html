@@ -3467,7 +3467,7 @@ function recalcCost() {
     { label: '一磅 450g', grams: 450, pkg: cs.bag_1lb + cs.shipping,
       pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb' },
     { label: '濾掛 10g',  grams: 10,  pkg: cs.drip_pkg,
-      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip' },
+      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip', wholesaleFn: p => p + 10 },
     { label: '單杯 20g',  grams: 20,  pkg: cs.cup_pkg,
       pkgStr: `杯${cs.cup_pkg}`, priceField: 'price_cup' },
   ];
@@ -3476,7 +3476,9 @@ function recalcCost() {
     const beanCost = s.grams * cpg;
     const total = beanCost + s.pkg;
     const sellPrice = parseFloat(b[s.priceField] || '');
-    const wholesale = !isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : '—';
+    const wholesale = !isNaN(sellPrice) && sellPrice > 0
+      ? Math.round(s.wholesaleFn ? s.wholesaleFn(sellPrice) : sellPrice * 0.5)
+      : '—';
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
