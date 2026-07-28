@@ -3493,13 +3493,21 @@ function recalcCost() {
     const beanCost = s.grams * cpg;
     const total = beanCost + s.pkg;
     let sellPrice = parseFloat(b[s.priceField] || '');
-    if (s.priceField === 'price_1lb' && (isNaN(sellPrice) || sellPrice <= 0)) {
-      const halfPrice = parseFloat(b.price_half || '');
-      if (!isNaN(halfPrice) && halfPrice > 0) sellPrice = halfPrice * 2;
+    let autoWs;
+    if (s.dripWholesale) {
+      autoWs = Math.round(total + 10);
+    } else if (s.wsKey === '1lb') {
+      // 一磅批發價 = 半磅批發價 × 2 - 20（有填一磅售價時仍用售價 × 50%）
+      if (!isNaN(sellPrice) && sellPrice > 0) {
+        autoWs = Math.round(sellPrice * 0.5);
+      } else {
+        const halfSell = parseFloat(b.price_half || '');
+        const halfWs = !isNaN(halfSell) && halfSell > 0 ? Math.round(halfSell * 0.5) : null;
+        autoWs = halfWs !== null ? Math.round(halfWs * 2 - 20) : null;
+      }
+    } else {
+      autoWs = !isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : null;
     }
-    const autoWs = s.dripWholesale
-      ? Math.round(total + 10)
-      : (!isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : null);
     const manual = b.wholesale_prices && b.wholesale_prices[s.wsKey] != null
       ? b.wholesale_prices[s.wsKey] : null;
     const displayVal = manual !== null ? manual : (autoWs !== null ? autoWs : '');
