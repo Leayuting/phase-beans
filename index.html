@@ -1233,15 +1233,21 @@ header {
 }
 .cost-setting-input:focus { border-color:var(--gray-70); }
 .cost-nt { font-size:10px; color:var(--gray-50); }
-.wholesale-input {
-  width:68px; padding:3px 6px; border:1px solid transparent;
-  border-radius:var(--radius); font-size:12px; text-align:right;
-  background:transparent; outline:none; color:var(--gray-70);
-  transition:border-color .12s, background .12s;
+.ws-cell { position:relative; white-space:nowrap; }
+.ws-edit-btn {
+  display:none; margin-left:5px; background:none; border:none; cursor:pointer;
+  font-size:11px; color:var(--gray-50); padding:1px 3px; border-radius:3px;
+  vertical-align:middle; line-height:1;
 }
-.wholesale-input:hover { border-color:var(--gray-20); background:#fff; }
-.wholesale-input:focus { border-color:var(--gray-70); background:#fff; color:var(--black); }
-.wholesale-input.manual { color:var(--black); font-weight:500; }
+.ws-edit-btn:hover { color:var(--black); background:var(--gray-08); }
+.ws-cell:hover .ws-edit-btn { display:inline; }
+.ws-val { color:var(--gray-70); }
+.ws-val.manual { color:var(--black); font-weight:500; }
+.wholesale-input {
+  width:68px; padding:3px 6px; border:1px solid var(--gray-70);
+  border-radius:var(--radius); font-size:12px; text-align:right;
+  background:#fff; outline:none; color:var(--black);
+}
 
 /* ── BLEND RECIPE ── */
 #fBlendSection .form-label { display:flex; align-items:center; gap:8px; }
@@ -3510,20 +3516,34 @@ function recalcCost() {
     }
     const manual = b.wholesale_prices && b.wholesale_prices[s.wsKey] != null
       ? b.wholesale_prices[s.wsKey] : null;
-    const displayVal = manual !== null ? manual : (autoWs !== null ? autoWs : '');
-    const placeholder = autoWs !== null ? autoWs : '—';
+    const displayVal = manual !== null ? manual : autoWs;
     const isManual = manual !== null;
+    const wsText = displayVal !== null ? `NT$ ${displayVal}` : '—';
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
       <td style="font-size:11px;color:var(--gray-50)">${s.pkg > 0 ? s.pkgStr : '—'}</td>
       <td class="cost-total">NT$ ${Math.round(total)}</td>
-      <td><input class="wholesale-input${isManual ? ' manual' : ''}" type="number" min="0" step="1"
-        value="${displayVal}" placeholder="${placeholder}"
-        onchange="saveWholesalePrice('${s.wsKey}', this.value)"
-        title="清空可恢復自動計算"></td>
+      <td class="ws-cell">
+        <span class="ws-val${isManual ? ' manual' : ''}">${wsText}</span>
+        <button class="ws-edit-btn" onclick="editWholesaleCell(this.closest('td'),'${s.wsKey}',${displayVal !== null ? displayVal : ''},${autoWs !== null ? autoWs : ''})" title="編輯批發價">✎</button>
+      </td>
     </tr>`;
   }).join('');
+}
+
+function editWholesaleCell(td, wsKey, currentVal, autoVal) {
+  td.innerHTML = `<input class="wholesale-input" type="number" min="0" step="1"
+    value="${currentVal}" placeholder="${autoVal || '—'}"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${currentVal}';this.blur();}"
+    onblur="commitWholesale(this,'${wsKey}')">`;
+  td.querySelector('input').focus();
+  td.querySelector('input').select();
+}
+
+async function commitWholesale(input, wsKey) {
+  await saveWholesalePrice(wsKey, input.value);
+  recalcCost();
 }
 
 async function saveWholesalePrice(specKey, value) {
