@@ -3499,7 +3499,7 @@ function recalcCost() {
     } else if (s.wsKey === '1lb') {
       // 一磅批發價 = 半磅批發價 × 2 - 20（有填一磅售價時仍用售價 × 50%）
       if (!isNaN(sellPrice) && sellPrice > 0) {
-        autoWs = Math.round(sellPrice * 0.5);
+        autoWs = Math.round(sellPrice * 0.5 - 20);
       } else {
         const halfSell = parseFloat(b.price_half || '');
         const halfWs = !isNaN(halfSell) && halfSell > 0 ? Math.round(halfSell * 0.5) : null;
