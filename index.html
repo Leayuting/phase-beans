@@ -3459,29 +3459,32 @@ function recalcCost() {
   const cs = costSettings;
   const specs = [
     { label: '20g',       grams: 20,  pkg: cs.bag_20g + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_20g' },
     { label: '120g',      grams: 120, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_120g' },
     { label: '半磅 227g', grams: 227, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}` },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_half' },
     { label: '一磅 450g', grams: 450, pkg: cs.bag_1lb + cs.shipping,
-      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}` },
+      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb' },
     { label: '濾掛 10g',  grams: 10,  pkg: cs.drip_pkg,
-      pkgStr: `包材${cs.drip_pkg}`, dripWholesale: true },
+      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip', dripWholesale: true },
     { label: '單杯 20g',  grams: 20,  pkg: cs.cup_pkg,
-      pkgStr: `杯${cs.cup_pkg}` },
+      pkgStr: `杯${cs.cup_pkg}`, priceField: 'price_cup' },
   ];
 
   tbody.innerHTML = specs.map(s => {
     const beanCost = s.grams * cpg;
     const total = beanCost + s.pkg;
-    const wholesale = Math.round(s.dripWholesale ? total + 10 : total * 0.5);
+    const sellPrice = parseFloat(b[s.priceField] || '');
+    const wholesale = !isNaN(sellPrice) && sellPrice > 0
+      ? Math.round(s.dripWholesale ? sellPrice + 10 : sellPrice * 0.5)
+      : '—';
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
       <td style="font-size:11px;color:var(--gray-50)">${s.pkg > 0 ? s.pkgStr : '—'}</td>
       <td class="cost-total">NT$ ${Math.round(total)}</td>
-      <td style="color:var(--gray-70)">NT$ ${wholesale}</td>
+      <td style="color:var(--gray-70)">${wholesale !== '—' ? `NT$ ${wholesale}` : '—'}</td>
     </tr>`;
   }).join('');
 }
