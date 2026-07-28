@@ -3477,7 +3477,8 @@ function recalcCost() {
     const total = beanCost + s.pkg;
     let sellPrice = parseFloat(b[s.priceField] || '');
     if (s.priceField === 'price_1lb' && (isNaN(sellPrice) || sellPrice <= 0)) {
-      sellPrice = parseFloat(b.price_half || '');
+      const halfPrice = parseFloat(b.price_half || '');
+      if (!isNaN(halfPrice) && halfPrice > 0) sellPrice = halfPrice * 2;
     }
     const wholesale = s.dripWholesale
       ? Math.round(total + 10)
