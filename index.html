@@ -1233,6 +1233,15 @@ header {
 }
 .cost-setting-input:focus { border-color:var(--gray-70); }
 .cost-nt { font-size:10px; color:var(--gray-50); }
+.wholesale-input {
+  width:68px; padding:3px 6px; border:1px solid transparent;
+  border-radius:var(--radius); font-size:12px; text-align:right;
+  background:transparent; outline:none; color:var(--gray-70);
+  transition:border-color .12s, background .12s;
+}
+.wholesale-input:hover { border-color:var(--gray-20); background:#fff; }
+.wholesale-input:focus { border-color:var(--gray-70); background:#fff; color:var(--black); }
+.wholesale-input.manual { color:var(--black); font-weight:500; }
 
 /* ── BLEND RECIPE ── */
 #fBlendSection .form-label { display:flex; align-items:center; gap:8px; }
@@ -3467,17 +3476,17 @@ function recalcCost() {
   const cs = costSettings;
   const specs = [
     { label: '20g',       grams: 20,  pkg: cs.bag_20g + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_20g' },
+      pkgStr: `袋${cs.bag_20g}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_20g',  wsKey: '20g' },
     { label: '120g',      grams: 120, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_120g' },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_120g', wsKey: '120g' },
     { label: '半磅 227g', grams: 227, pkg: cs.bag_half + cs.shipping + cs.sticker,
-      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_half' },
+      pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_half',  wsKey: 'half' },
     { label: '一磅 450g', grams: 450, pkg: cs.bag_1lb + cs.shipping,
-      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb' },
+      pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb',  wsKey: '1lb' },
     { label: '濾掛 10g',  grams: 10,  pkg: cs.drip_pkg,
-      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip', dripWholesale: true },
+      pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip', wsKey: 'drip', dripWholesale: true },
     { label: '單杯 20g',  grams: 20,  pkg: cs.cup_pkg,
-      pkgStr: `杯${cs.cup_pkg}`, priceField: 'price_cup' },
+      pkgStr: `杯${cs.cup_pkg}`, priceField: 'price_cup', wsKey: 'cup' },
   ];
 
   tbody.innerHTML = specs.map(s => {
@@ -3488,17 +3497,41 @@ function recalcCost() {
       const halfPrice = parseFloat(b.price_half || '');
       if (!isNaN(halfPrice) && halfPrice > 0) sellPrice = halfPrice * 2;
     }
-    const wholesale = s.dripWholesale
+    const autoWs = s.dripWholesale
       ? Math.round(total + 10)
-      : (!isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : '—');
+      : (!isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : null);
+    const manual = b.wholesale_prices && b.wholesale_prices[s.wsKey] != null
+      ? b.wholesale_prices[s.wsKey] : null;
+    const displayVal = manual !== null ? manual : (autoWs !== null ? autoWs : '');
+    const placeholder = autoWs !== null ? autoWs : '—';
+    const isManual = manual !== null;
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
       <td style="font-size:11px;color:var(--gray-50)">${s.pkg > 0 ? s.pkgStr : '—'}</td>
       <td class="cost-total">NT$ ${Math.round(total)}</td>
-      <td style="color:var(--gray-70)">${wholesale !== '—' ? `NT$ ${wholesale}` : '—'}</td>
+      <td><input class="wholesale-input${isManual ? ' manual' : ''}" type="number" min="0" step="1"
+        value="${displayVal}" placeholder="${placeholder}"
+        onchange="saveWholesalePrice('${s.wsKey}', this.value)"
+        title="清空可恢復自動計算"></td>
     </tr>`;
   }).join('');
+}
+
+async function saveWholesalePrice(specKey, value) {
+  const id = Number(viewingId);
+  const row = allRows.find(r => Number(r.id) === id);
+  if (!row) return;
+  if (!row.wholesale_prices) row.wholesale_prices = {};
+  const num = parseInt(value, 10);
+  if (!isNaN(num) && num > 0) {
+    row.wholesale_prices[specKey] = num;
+  } else {
+    delete row.wholesale_prices[specKey];
+  }
+  lsSave(allRows);
+  try { await sb.from('beans').update({ wholesale_prices: row.wholesale_prices }).eq('id', id); }
+  catch(e) { setSyncStatus('local'); }
 }
 
 async function saveYield() {
