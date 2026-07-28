@@ -3475,7 +3475,10 @@ function recalcCost() {
   tbody.innerHTML = specs.map(s => {
     const beanCost = s.grams * cpg;
     const total = beanCost + s.pkg;
-    const sellPrice = parseFloat(b[s.priceField] || '');
+    let sellPrice = parseFloat(b[s.priceField] || '');
+    if (s.priceField === 'price_1lb' && (isNaN(sellPrice) || sellPrice <= 0)) {
+      sellPrice = parseFloat(b.price_half || '');
+    }
     const wholesale = s.dripWholesale
       ? Math.round(total + 10)
       : (!isNaN(sellPrice) && sellPrice > 0 ? Math.round(sellPrice * 0.5) : '—');
