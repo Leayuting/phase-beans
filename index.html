@@ -1232,6 +1232,30 @@ header {
   background:#fff; outline:none;
 }
 .cost-setting-input:focus { border-color:var(--gray-70); }
+/* ── PASSWORD GATE ── */
+#pwGate {
+  position:fixed; inset:0; z-index:9999;
+  background:#fff; display:flex; align-items:center; justify-content:center;
+}
+.pw-box {
+  display:flex; flex-direction:column; align-items:center; gap:20px;
+  padding:48px 40px; width:320px;
+}
+.pw-logo { font-size:22px; font-weight:700; letter-spacing:0.18em; color:var(--black); }
+.pw-sub { font-size:11px; letter-spacing:0.12em; color:var(--gray-50); margin-top:-12px; }
+.pw-input {
+  width:100%; padding:11px 14px; border:1px solid var(--gray-20); border-radius:var(--radius);
+  font-size:15px; text-align:center; letter-spacing:0.12em; outline:none;
+  transition:border-color .15s;
+}
+.pw-input:focus { border-color:var(--black); }
+.pw-btn {
+  width:100%; padding:11px; background:var(--black); color:#fff; border:none;
+  border-radius:var(--radius); font-size:13px; letter-spacing:0.08em;
+  cursor:pointer; transition:opacity .15s;
+}
+.pw-btn:hover { opacity:.8; }
+.pw-err { font-size:12px; color:#c0392b; display:none; }
 .cost-nt { font-size:10px; color:var(--gray-50); }
 .ws-cell { position:relative; white-space:nowrap; }
 .ws-edit-btn {
@@ -1347,6 +1371,17 @@ header {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="pwGate">
+  <div class="pw-box">
+    <div class="pw-logo">PHASE</div>
+    <div class="pw-sub">Coffee Roasters — Bean Database</div>
+    <input class="pw-input" id="pwInput" type="password" placeholder="請輸入密碼"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="pw-btn" onclick="checkPassword()">進入</button>
+    <span class="pw-err" id="pwErr">密碼錯誤，請重試</span>
+  </div>
+</div>
 
 <header>
   <div>
@@ -1747,6 +1782,30 @@ header {
 <div class="toast" id="toast"><span class="toast-msg" id="toastMsg"></span><button class="toast-undo" id="toastUndo" style="display:none" onclick="handleUndo()">復原</button></div>
 
 <script>
+// ── PASSWORD GATE ──
+(function() {
+  if (sessionStorage.getItem('phase_beans_auth') === '1') {
+    document.getElementById('pwGate').style.display = 'none';
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('pwInput').focus();
+    });
+  }
+})();
+
+function checkPassword() {
+  const input = document.getElementById('pwInput');
+  const err = document.getElementById('pwErr');
+  if (input.value === '82981656') {
+    sessionStorage.setItem('phase_beans_auth', '1');
+    document.getElementById('pwGate').style.display = 'none';
+  } else {
+    err.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+}
+
 window.onerror = function(msg, src, line, col, err) {
   var el = document.getElementById('syncStatus');
   if (el) el.textContent = '⚠ JS錯誤: ' + msg + ' L' + line;
