@@ -1265,6 +1265,7 @@ header {
 }
 .ws-edit-btn:hover { color:var(--black); background:var(--gray-08); }
 .ws-cell:hover .ws-edit-btn { display:inline; }
+.ws-edit-btn.always { display:inline; color:var(--gray-40); }
 .ws-val { color:var(--gray-70); }
 .ws-val.manual { color:var(--black); font-weight:500; }
 .wholesale-input {
@@ -3585,6 +3586,7 @@ function recalcCost() {
     const displayVal = manual !== null ? manual : autoWs;
     const isManual = manual !== null;
     const wsText = displayVal !== null ? `NT$ ${displayVal}` : '—';
+    const noAuto = autoWs === null && manual === null;
     return `<tr>
       <td class="cost-spec">${s.label}</td>
       <td>${Math.round(beanCost)}</td>
@@ -3592,7 +3594,7 @@ function recalcCost() {
       <td class="cost-total">NT$ ${Math.round(total)}</td>
       <td class="ws-cell">
         <span class="ws-val${isManual ? ' manual' : ''}">${wsText}</span>
-        <button class="ws-edit-btn" onclick="editWholesaleCell(this.closest('td'),'${s.wsKey}',${displayVal !== null ? displayVal : ''},${autoWs !== null ? autoWs : ''})" title="編輯批發價">✎</button>
+        <button class="ws-edit-btn${noAuto ? ' always' : ''}" onclick="editWholesaleCell(this.closest('td'),'${s.wsKey}','${displayVal !== null ? displayVal : ''}','${autoWs !== null ? autoWs : ''}')" title="編輯批發價">✎</button>
       </td>
     </tr>`;
   }).join('');
