@@ -3548,6 +3548,8 @@ function recalcCost() {
       pkgStr: `袋${cs.bag_half}＋運${cs.shipping}＋貼${cs.sticker}`, priceField: 'price_half',  wsKey: 'half' },
     { label: '一磅 450g', grams: 450, pkg: cs.bag_1lb + cs.shipping,
       pkgStr: `袋${cs.bag_1lb}＋運${cs.shipping}`, priceField: 'price_1lb',  wsKey: '1lb' },
+    { label: '五磅 2268g', grams: 2268, pkg: cs.bag_5lb + cs.shipping,
+      pkgStr: `袋${cs.bag_5lb}＋運${cs.shipping}`, wsKey: '5lb', fiveLbWholesale: true },
     { label: '濾掛 10g',  grams: 10,  pkg: cs.drip_pkg,
       pkgStr: `包材${cs.drip_pkg}`, priceField: 'price_drip', wsKey: 'drip', dripWholesale: true },
     { label: '單杯 20g',  grams: 20,  pkg: cs.cup_pkg,
@@ -3559,7 +3561,12 @@ function recalcCost() {
     const total = beanCost + s.pkg;
     let sellPrice = parseFloat(b[s.priceField] || '');
     let autoWs;
-    if (s.dripWholesale) {
+    if (s.fiveLbWholesale) {
+      // 五磅批發價 = 半磅批發價 × 10 - 50
+      const halfSell5 = parseFloat(b.price_half || '');
+      const halfWs5 = !isNaN(halfSell5) && halfSell5 > 0 ? Math.round(halfSell5 * 0.5) : null;
+      autoWs = halfWs5 !== null ? Math.round(halfWs5 * 10 - 50) : null;
+    } else if (s.dripWholesale) {
       autoWs = Math.round(total + 10);
     } else if (s.wsKey === '1lb') {
       // 一磅批發價 = 半磅批發價 × 2 - 20（有填一磅售價時仍用售價 × 50%）
