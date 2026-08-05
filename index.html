@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHASE — 咖啡豆資料庫</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/beans-192.png">
+<meta name="theme-color" content="#3D2A1C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="咖啡豆資料庫">
 <style>
 /* ── TOKENS ── */
 :root {
@@ -3784,5 +3790,10 @@ document.getElementById('ovFilterRow').addEventListener('click', e => {
   <button class="gcm-delist" onclick="hideCardMenu();openDelistConfirm()">下架</button>
   <button class="gcm-delete" onclick="hideCardMenu();openDeleteConfirm()">刪除</button>
 </div>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
 </body>
 </html>
