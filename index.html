@@ -1132,6 +1132,7 @@ header {
   border: 1px solid var(--gray-20);
 }
 .overview-pip.done { background: var(--black); border-color: var(--black); }
+.overview-pip.na   { background: var(--gray-20); border-color: var(--gray-20); }
 .overview-pct { font-size: 12px; color: var(--gray-50); text-align: right; }
 .overview-pct strong { color: var(--black); }
 .overview-filter-row {
@@ -1226,6 +1227,16 @@ header {
   }
   .filter-row::-webkit-scrollbar { display: none; }
   .cat-btn { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 4px 10px; }
+  .ops-filter-row {
+    order: 4;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .ops-filter-row::-webkit-scrollbar { display: none; }
+  .ops-filter-btn { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 4px 10px; }
   .btn-batch { display: none; }
   .btn-add { display: none; } /* 由 FAB 取代 */
   .sort-select { font-size: 12px; padding: 6px 8px; }
@@ -1563,6 +1574,49 @@ header {
 .quote-action-btn:hover { border-color: var(--gray-70); color: var(--black); }
 .quote-action-btn.danger { color: #c0392b; border-color: #dab8b8; }
 .quote-action-btn.danger:hover { background: #fdf0f0; }
+
+/* ── OPS STATUS ── */
+.ops-status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  letter-spacing: 0.04em; font-weight: 500; white-space: nowrap; flex-shrink: 0;
+}
+.ops-status-badge.preparing  { background: #f0f0f0; color: #666; }
+.ops-status-badge.ready      { background: #fff8e1; color: #a07000; border: 1px solid #ffe082; }
+.ops-status-badge.notified   { background: #e8f5ee; color: #2e7d52; border: 1px solid #a5d6bc; }
+.card-ops-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px 14px; gap: 8px;
+}
+.card-ops-progress { font-size: 10px; color: var(--gray-50); letter-spacing: 0.04em; }
+.ops-filter-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.ops-filter-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 11px; border-radius: 20px; border: 1.5px solid transparent;
+  font-size: 11px; cursor: pointer; transition: all .15s;
+  background: var(--gray-08); color: var(--gray-70);
+  font-family: var(--font-body); letter-spacing: 0.03em;
+}
+.ops-filter-btn.active      { background: var(--black); color: #fff; border-color: var(--black); }
+.ops-filter-btn.active.ready    { background: #a07000; border-color: #a07000; color: #fff; }
+.ops-filter-btn.active.notified { background: #2e7d52; border-color: #2e7d52; color: #fff; }
+/* three-state task toggle */
+.dtask-toggle {
+  width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--gray-20); background: #fff; font-size: 11px;
+  transition: all .15s; user-select: none;
+}
+.dtask-toggle.done { background: var(--black); border-color: var(--black); color: #fff; }
+.dtask-toggle.na   { background: var(--gray-20); border-color: var(--gray-20); color: var(--gray-50); }
+.dtask-by { font-size: 10px; color: var(--gray-50); margin-left: auto; padding-left: 8px; white-space: nowrap; }
+.dtask-locked { opacity: .4; pointer-events: none; }
+.dtask-blocked-hint {
+  font-size: 11px; color: #b06a00; background: #fff8e1;
+  border: 1px solid #ffe082; border-radius: 5px; padding: 8px 12px; margin-top: 6px;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1573,6 +1627,9 @@ header {
     <div class="pw-logo">PHASE</div>
     <div class="pw-sub">Coffee Roasters — Bean Database</div>
     <input class="pw-input" id="pwInput" type="password" placeholder="請輸入密碼"
+      onkeydown="if(event.key==='Enter')document.getElementById('pwNameInput').focus()">
+    <input class="pw-input" id="pwNameInput" placeholder="你的名字（勾選待辦時顯示）"
+      style="font-size:13px;letter-spacing:0.04em"
       onkeydown="if(event.key==='Enter')checkPassword()">
     <button class="pw-btn" onclick="checkPassword()">進入</button>
     <span class="pw-err" id="pwErr">密碼錯誤，請重試</span>
@@ -1610,6 +1667,12 @@ header {
     <button class="cat-btn" data-cat="T"><span class="dot" style="background:var(--cat-T)"></span>台灣競標</button>
     <button class="cat-btn" data-cat="X"><span class="dot" style="background:var(--cat-X)"></span>配方豆</button>
     <button class="cat-btn" data-cat="O"><span class="dot" style="background:var(--cat-O)"></span>其他</button>
+  </div>
+  <div class="ops-filter-row" id="opsFilterRow">
+    <button class="ops-filter-btn active" data-ops="ALL">全部狀態</button>
+    <button class="ops-filter-btn" data-ops="preparing">準備中</button>
+    <button class="ops-filter-btn ready" data-ops="ready">可通知下單</button>
+    <button class="ops-filter-btn notified" data-ops="notified">已通知門店</button>
   </div>
   <div class="toolbar-actions">
     <button class="btn-batch" id="btnBatch" onclick="toggleBatchMode()">批次選取</button>
@@ -1776,17 +1839,14 @@ header {
       </div>
       <div class="design-tasks-section">
         <div class="design-tasks-header">
-          <div class="design-section-label">美編待辦 Design Tasks</div>
+          <div class="design-section-label">上架待辦</div>
           <div class="design-progress-text" id="dTaskProgress"></div>
         </div>
         <div class="design-progress-bar-bg">
           <div class="design-progress-bar-fill" id="dTaskProgressBar" style="width:0%"></div>
         </div>
         <div class="design-task-list" id="dTaskList"></div>
-        <div class="design-add-row">
-          <input class="design-add-input" id="dTaskInput" placeholder="新增美編項目…" onkeydown="if(event.key==='Enter')addDesignTask()">
-          <button class="design-add-btn" onclick="addDesignTask()">新增</button>
-        </div>
+        <div id="dTaskBlockedHint"></div>
       </div>
     </div>
 
@@ -1982,8 +2042,14 @@ header {
 <script>
 // ── PASSWORD GATE ──
 (function() {
-  if (sessionStorage.getItem('phase_beans_auth') === '1') {
+  const auth = sessionStorage.getItem('phase_beans_auth');
+  const savedUser = sessionStorage.getItem('phase_beans_user') || '';
+  if (auth === '1') {
     document.getElementById('pwGate').style.display = 'none';
+    // currentUser 在 JS 載入後設定，等 DOMContentLoaded 後再賦值
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof currentUser !== 'undefined') currentUser = savedUser;
+    });
   } else {
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('pwInput').focus();
@@ -1993,9 +2059,13 @@ header {
 
 function checkPassword() {
   const input = document.getElementById('pwInput');
+  const nameInput = document.getElementById('pwNameInput');
   const err = document.getElementById('pwErr');
   if (input.value === '82981656') {
+    const name = nameInput ? nameInput.value.trim() : '';
     sessionStorage.setItem('phase_beans_auth', '1');
+    sessionStorage.setItem('phase_beans_user', name);
+    currentUser = name;
     document.getElementById('pwGate').style.display = 'none';
   } else {
     err.style.display = 'block';
@@ -2082,6 +2152,7 @@ function subscribeRealtime() {
 let beans = [];
 let pending = [];
 let activeFilter = 'ALL';
+let activeOpsFilter = 'ALL';
 let searchQuery = '';
 let activeSort = 'newest';
 let viewingId = null;
@@ -2116,6 +2187,7 @@ function nextId() {
 function filteredBeans() {
   let list = beans;
   if (activeFilter !== 'ALL') list = list.filter(b => b.category_code === activeFilter);
+  if (activeOpsFilter !== 'ALL') list = list.filter(b => getBeanOpsStatus(b.id) === activeOpsFilter);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     list = list.filter(b =>
@@ -2211,14 +2283,14 @@ function render() {
 }
 
 function renderDesignPips(beanId) {
-  var st = getBeanTaskStats(beanId);
-  if (!st.total) return '';
-  var pips = '';
-  for (var i = 0; i < st.total; i++) {
-    pips += '<div class="card-design-pip' + (i < st.done ? ' done' : '') + '" style="max-width:12px"></div>';
-  }
-  return '<div class="card-design-bar"><div class="card-design-pips">' + pips + '</div>'
-       + '<div class="card-design-label">' + st.done + '/' + st.total + ' 美編</div></div>';
+  var status = getBeanOpsStatus(beanId);
+  var prog = getBeanOpsProgress(beanId);
+  var statusLabel = { preparing: '準備中', ready: '可通知下單', notified: '已通知門店' }[status];
+  var statusCls   = { preparing: 'preparing', ready: 'ready', notified: 'notified' }[status];
+  return '<div class="card-ops-bar">'
+    + '<span class="ops-status-badge ' + statusCls + '">' + statusLabel + '</span>'
+    + '<span class="card-ops-progress">' + prog.done + '/' + prog.total + '</span>'
+    + '</div>';
 }
 
 function getPriceItems(b) {
@@ -2575,9 +2647,7 @@ async function saveBean() {
         data.info_verified = false;
         data.info_verified_date = null;
         data.info_verified_by = null;
-        const resetTasks = {};
-        DEFAULT_DESIGN_TASKS.forEach(t => { resetTasks[t.key] = { label: t.label, done: false }; });
-        data.design_tasks = resetTasks;
+        // 不重設待辦完成紀錄，保留既有進度
       }
       // 報價單處理
       if (pendingQuoteRemove && !pendingQuoteFile) {
@@ -2610,7 +2680,7 @@ async function saveBean() {
     } catch(e) { setSyncStatus('local'); }
   } else {
     const defaultTasks = {};
-    DEFAULT_DESIGN_TASKS.forEach(t => { defaultTasks[t.key] = { label: t.label, done: false }; });
+    DEFAULT_DESIGN_TASKS.forEach(t => { defaultTasks[t.key] = { label: t.label, done: false, by: '', na: false }; });
     data.design_tasks = defaultTasks;
     data.pending_review = true;
     data.created_at = data.updated_at;
@@ -3094,6 +3164,15 @@ document.getElementById('filterRow').addEventListener('click', e => {
   render();
 });
 
+document.getElementById('opsFilterRow').addEventListener('click', e => {
+  const btn = e.target.closest('.ops-filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.ops-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeOpsFilter = btn.dataset.ops;
+  render();
+});
+
 document.getElementById('searchInput').addEventListener('input', e => {
   searchQuery = e.target.value.trim();
   render();
@@ -3109,17 +3188,29 @@ document.addEventListener('keydown', e => {
 // PER-BEAN DESIGN TASKS
 // ══════════════════════════════════════
 
+// 固定待辦清單（順序固定，不可刪）
+// required: 前8項必須全部 done/na 才可通知下單
+// optional: 不列入作業狀態計算
+// final: 最後通知項，需前8完成才可勾選
 const DEFAULT_DESIGN_TASKS = [
-  { key: 'bag',      label: '豆袋' },
-  { key: 'drip',     label: '沐泓濾掛' },
-  { key: 'card',     label: '豆卡製作' },
-  { key: 'cocomart', label: 'Cocomart' },
-  { key: 'web_list', label: '官網咖啡豆、濾掛' },
-  { key: 'pos_cup',  label: 'POS系統-出杯' },
-  { key: 'pos_bean', label: 'POS系統-咖啡豆、濾掛' },
+  { key: 'price',    label: '售價確認',          required: true  },
+  { key: 'bag',      label: '豆袋',               required: true  },
+  { key: 'drip',     label: '沐泓濾掛',           required: true  },
+  { key: 'card',     label: '豆卡製作',           required: true  },
+  { key: 'cocomart', label: 'Cocomart',           required: true  },
+  { key: 'web_list', label: '官網－咖啡豆、濾掛', required: true  },
+  { key: 'pos_cup',  label: 'POS 系統－出杯',     required: true  },
+  { key: 'pos_bean', label: 'POS 系統－咖啡豆、濾掛', required: true },
+  { key: 'notify_pre',  label: '門店新品先行告知', optional: true },
+  { key: 'notify_final',label: '門店正式下單通知', final: true    },
 ];
+const REQUIRED_KEYS = DEFAULT_DESIGN_TASKS.filter(t => t.required).map(t => t.key);
+const FINAL_KEY = 'notify_final';
 
 let designTasks = {};
+
+// 登入人員（由密碼輸入後設定，或從 sessionStorage 恢復）
+let currentUser = sessionStorage.getItem('phase_beans_user') || '';
 
 async function saveDesignTasksFor(beanId) {
   const id = Number(beanId);
@@ -3135,87 +3226,106 @@ async function saveDesignTasksFor(beanId) {
 
 function getBeanTasks(beanId) {
   const id = String(beanId);
-  if (!designTasks[id] || !Object.keys(designTasks[id]).length) {
-    designTasks[id] = {};
-    DEFAULT_DESIGN_TASKS.forEach(t => {
-      designTasks[id][t.key] = { label: t.label, done: false };
-    });
-    saveDesignTasksFor(beanId);
-  }
-  return designTasks[id];
+  if (!designTasks[id]) designTasks[id] = {};
+  const tasks = designTasks[id];
+  // 確保所有預設 key 都存在（不覆蓋既有資料）
+  DEFAULT_DESIGN_TASKS.forEach(t => {
+    if (!tasks[t.key]) tasks[t.key] = { label: t.label, done: false, by: '', na: false };
+  });
+  return tasks;
+}
+
+// 作業狀態計算
+function getBeanOpsStatus(beanId) {
+  const tasks = getBeanTasks(beanId);
+  const finalTask = tasks[FINAL_KEY];
+  if (finalTask && finalTask.done) return 'notified';
+  const allReqDone = REQUIRED_KEYS.every(k => {
+    const t = tasks[k];
+    return t && (t.done || t.na);
+  });
+  if (allReqDone) return 'ready';
+  return 'preparing';
+}
+
+// 作業進度（前8項，不含 optional 和 final）
+function getBeanOpsProgress(beanId) {
+  const tasks = getBeanTasks(beanId);
+  const done = REQUIRED_KEYS.filter(k => { const t = tasks[k]; return t && (t.done || t.na); }).length;
+  return { done, total: REQUIRED_KEYS.length };
 }
 
 function getBeanTaskStats(beanId) {
-  const tasks = getBeanTasks(beanId);
-  const keys = Object.keys(tasks);
-  const done = keys.filter(k => tasks[k].done).length;
-  return { total: keys.length, done };
+  const p = getBeanOpsProgress(beanId);
+  return { total: p.total, done: p.done };
 }
 
 function renderDesignTasksForBean(beanId) {
   const tasks = getBeanTasks(beanId);
-  const keys = Object.keys(tasks);
-  const done = keys.filter(k => tasks[k].done).length;
-  const pct = keys.length ? Math.round(done / keys.length * 100) : 0;
+  const prog = getBeanOpsProgress(beanId);
+  const pct = prog.total ? Math.round(prog.done / prog.total * 100) : 0;
+  const status = getBeanOpsStatus(beanId);
 
-  document.getElementById('dTaskProgress').innerHTML = `完成 <strong>${done}</strong> / ${keys.length}`;
+  const statusLabel = { preparing: '準備中', ready: '可通知下單', notified: '已通知門店' }[status];
+  const statusCls   = { preparing: 'preparing', ready: 'ready', notified: 'notified' }[status];
+  document.getElementById('dTaskProgress').innerHTML =
+    `<span class="ops-status-badge ${statusCls}">${statusLabel}</span>&ensp;${prog.done}/${prog.total}`;
   document.getElementById('dTaskProgressBar').style.width = pct + '%';
 
-  const defaultKeys = DEFAULT_DESIGN_TASKS.map(t => t.key);
-  const extraKeys = keys.filter(k => !defaultKeys.includes(k));
-  const orderedKeys = [...defaultKeys.filter(k => keys.includes(k)), ...extraKeys];
-  document.getElementById('dTaskList').innerHTML = orderedKeys.map(k => {
-    const t = tasks[k];
-    return `<div class="design-task-row">
-      <div class="dtask-check ${t.done ? 'done' : ''}" onclick="toggleDesignTask('${beanId}','${k}')"></div>
-      <div class="dtask-label ${t.done ? 'done' : ''}">${escapeHtml(t.label)}</div>
-      <button class="dtask-del" onclick="deleteDesignTask('${beanId}','${k}')" title="刪除">×</button>
+  const allReqDone = status === 'ready' || status === 'notified';
+
+  document.getElementById('dTaskList').innerHTML = DEFAULT_DESIGN_TASKS.map(def => {
+    const t = tasks[def.key] || { done: false, by: '', na: false };
+    const isLocked = def.final && !allReqDone;
+    const state = t.na ? 'na' : (t.done ? 'done' : 'none');
+    const icon = state === 'done' ? '✓' : (state === 'na' ? '—' : '');
+    const labelCls = state === 'done' ? 'done' : (state === 'na' ? 'done' : '');
+    const lockedCls = isLocked ? ' dtask-locked' : '';
+    const byHtml = t.done && t.by ? `<span class="dtask-by">${escapeHtml(t.by)}</span>` : '';
+    return `<div class="design-task-row${lockedCls}">
+      <div class="dtask-toggle ${state}" onclick="cycleDesignTask('${beanId}','${def.key}')">${icon}</div>
+      <div class="dtask-label ${labelCls}">${escapeHtml(def.label)}${def.optional ? '<span style="font-size:10px;color:var(--gray-50);margin-left:4px">選填</span>' : ''}</div>
+      ${byHtml}
     </div>`;
   }).join('');
+
+  // 封鎖提示
+  const hintEl = document.getElementById('dTaskBlockedHint');
+  if (!allReqDone) {
+    const incomplete = REQUIRED_KEYS.filter(k => { const t = tasks[k]; return !(t && (t.done || t.na)); });
+    const labels = incomplete.map(k => { const d = DEFAULT_DESIGN_TASKS.find(x => x.key === k); return d ? d.label : k; });
+    hintEl.innerHTML = `<div class="dtask-blocked-hint">尚未完成：${labels.join('、')}</div>`;
+  } else {
+    hintEl.innerHTML = '';
+  }
 }
 
 function escapeHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function toggleDesignTask(beanId, key) {
+// 三態切換：未完成 → 已完成 → 不適用 → 未完成
+function cycleDesignTask(beanId, key) {
   const tasks = getBeanTasks(beanId);
-  if (tasks[key]) tasks[key].done = !tasks[key].done;
-  saveDesignTasksFor(beanId);
-  renderDesignTasksForBean(beanId);
-  render();
-}
-
-function deleteDesignTask(beanId, key) {
-  const tasks = getBeanTasks(beanId);
-  const backup = tasks[key] ? { ...tasks[key] } : null;
-  delete tasks[key];
-  saveDesignTasksFor(beanId);
-  renderDesignTasksForBean(beanId);
-  render();
-  if (backup) {
-    showToast(`「${backup.label}」已刪除`, () => {
-      const t = getBeanTasks(beanId);
-      t[key] = backup;
-      saveDesignTasksFor(beanId);
-      renderDesignTasksForBean(beanId);
-      render();
-    });
+  const t = tasks[key];
+  if (!t) return;
+  const def = DEFAULT_DESIGN_TASKS.find(d => d.key === key);
+  const allReqDone = REQUIRED_KEYS.every(k => { const x = tasks[k]; return x && (x.done || x.na); });
+  if (def && def.final && !allReqDone) return; // 封鎖
+  if (!t.done && !t.na) {
+    // 未完成 → 已完成
+    t.done = true; t.na = false; t.by = currentUser;
+  } else if (t.done) {
+    // 已完成 → 不適用（final 項不允許設不適用，直接回未完成）
+    if (def && def.final) { t.done = false; t.na = false; t.by = ''; }
+    else { t.done = false; t.na = true; t.by = ''; }
+  } else {
+    // 不適用 → 未完成
+    t.done = false; t.na = false; t.by = '';
   }
-}
-
-function addDesignTask() {
-  const inp = document.getElementById('dTaskInput');
-  const label = (inp ? inp.value.trim() : '');
-  if (!label || !viewingId) return;
-  const tasks = getBeanTasks(viewingId);
-  const key = 'custom_' + Date.now();
-  tasks[key] = { label, done: false };
-  saveDesignTasksFor(viewingId);
-  if (inp) inp.value = '';
-  renderDesignTasksForBean(viewingId);
+  saveDesignTasksFor(beanId);
+  renderDesignTasksForBean(beanId);
   render();
-  showToast('✓ 已新增');
 }
 
 // ── OVERVIEW TAB ──
@@ -3295,12 +3405,13 @@ function renderOverviewTable() {
 
   document.getElementById('ovTableBody').innerHTML = list.map(({b, stats}) => {
     const tasks = getBeanTasks(b.id);
-    const keys = Object.keys(tasks);
     const color = CAT_COLORS_OV[b.category_code] || '#888';
     const pct = stats.total ? Math.round(stats.done/stats.total*100) : 0;
-    const pips = keys.map(k =>
-      `<div class="overview-pip ${tasks[k].done ? 'done' : ''}" title="${escapeHtml(tasks[k].label)}"></div>`
-    ).join('');
+    const pips = DEFAULT_DESIGN_TASKS.map(def => {
+      const t = tasks[def.key] || {};
+      const cls = t.done ? 'done' : (t.na ? 'na' : '');
+      return `<div class="overview-pip ${cls}" title="${escapeHtml(def.label)}${t.na?' (不適用)':''}"></div>`;
+    }).join('');
 
     return `<div class="overview-row" onclick="switchView('beans'); setTimeout(()=>openViewModal(${b.id}),50)">
       <div>
