@@ -3204,7 +3204,8 @@ const DEFAULT_DESIGN_TASKS = [
   { key: 'notify_pre',  label: '門店新品先行告知', optional: true },
   { key: 'notify_final',label: '門店正式下單通知', final: true    },
 ];
-const REQUIRED_KEYS = DEFAULT_DESIGN_TASKS.filter(t => t.required).map(t => t.key);
+// 只有這 5 項決定作業狀態（其餘為追蹤用，不影響狀態）
+const REQUIRED_KEYS = ['price', 'bag', 'drip', 'card', 'cocomart'];
 const FINAL_KEY = 'notify_final';
 
 let designTasks = {};
