@@ -1227,15 +1227,6 @@ header {
   }
   .filter-row::-webkit-scrollbar { display: none; }
   .cat-btn { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 4px 10px; }
-  .ops-filter-row {
-    order: 4;
-    flex: 1 1 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-  .ops-filter-row::-webkit-scrollbar { display: none; }
   .ops-filter-btn { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 4px 10px; }
   .btn-batch { display: none; }
   .btn-add { display: none; } /* 由 FAB 取代 */
@@ -1646,7 +1637,7 @@ header {
   <nav class="header-nav">
     <button class="nav-tab active" id="tabBeans" onclick="switchView('beans')">咖啡豆</button>
     <button class="nav-tab" id="tabPending" onclick="switchView('pending')">待審核<span id="pendingBadge" class="delist-badge-num"></span></button>
-    <button class="nav-tab" id="tabOverview" onclick="switchView('overview')">美編總覽</button>
+    <button class="nav-tab" id="tabOverview" onclick="switchView('overview')">狀態總覽</button>
     <button class="nav-tab" id="tabDelisted" onclick="switchView('delisted')">下架<span id="delistedBadge"></span></button>
     <button class="nav-tab" id="tabTrash" onclick="switchView('trash')">垃圾桶<span id="trashBadge"></span></button>
   </nav>
@@ -1668,12 +1659,6 @@ header {
     <button class="cat-btn" data-cat="X"><span class="dot" style="background:var(--cat-X)"></span>配方豆</button>
     <button class="cat-btn" data-cat="O"><span class="dot" style="background:var(--cat-O)"></span>其他</button>
   </div>
-  <div class="ops-filter-row" id="opsFilterRow">
-    <button class="ops-filter-btn active" data-ops="ALL">全部狀態</button>
-    <button class="ops-filter-btn" data-ops="preparing">準備中</button>
-    <button class="ops-filter-btn ready" data-ops="ready">可通知下單</button>
-    <button class="ops-filter-btn notified" data-ops="notified">已通知門店</button>
-  </div>
   <div class="toolbar-actions">
     <button class="btn-batch" id="btnBatch" onclick="toggleBatchMode()">批次選取</button>
     <select class="sort-select" id="sortSelect" onchange="activeSort=this.value;render()"><option value="newest">最新新增</option><option value="price_asc">價格低到高</option><option value="price_desc">價格高到低</option></select>
@@ -1693,20 +1678,26 @@ header {
   <div class="grid-container" id="grid"></div>
 </div>
 <div id="overviewView">
-  <div class="overview-title">美編待辦總覽</div>
-  <div class="overview-sub">Design Tasks Overview — per bean</div>
+  <div class="overview-title">狀態總覽</div>
+  <div class="overview-sub">Ops Status Overview — per bean</div>
   <div class="overview-stats-row" id="ovStats"></div>
+  <div class="ops-filter-row" id="opsFilterRow" style="margin-bottom:16px">
+    <button class="ops-filter-btn active" data-ops="ALL">全部狀態</button>
+    <button class="ops-filter-btn" data-ops="preparing">準備中</button>
+    <button class="ops-filter-btn ready" data-ops="ready">可通知下單</button>
+    <button class="ops-filter-btn notified" data-ops="notified">已通知門店</button>
+  </div>
   <div class="overview-filter-row" id="ovFilterRow">
     <button class="ov-filter-btn active" data-ovf="all">全部</button>
     <button class="ov-filter-btn" data-ovf="incomplete">未完成</button>
     <button class="ov-filter-btn" data-ovf="partial">部分完成</button>
     <button class="ov-filter-btn" data-ovf="done">全部完成</button>
   </div>
-  <div class="overview-table">
+  <div class="overview-table" style="margin-top:12px">
     <div class="overview-table-header">
       <div class="overview-th">豆名</div>
       <div class="overview-th">分類</div>
-      <div class="overview-th">美編項目</div>
+      <div class="overview-th">待辦項目</div>
       <div class="overview-th" style="text-align:right">進度</div>
     </div>
     <div id="ovTableBody"></div>
@@ -3170,7 +3161,8 @@ document.getElementById('opsFilterRow').addEventListener('click', e => {
   document.querySelectorAll('.ops-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeOpsFilter = btn.dataset.ops;
-  render();
+  if (currentView === 'overview') renderOverviewTable();
+  else render();
 });
 
 document.getElementById('searchInput').addEventListener('input', e => {
@@ -3365,26 +3357,26 @@ function switchView(view) {
 }
 
 function renderOverview() {
-  const allStats = beans.map(b => getBeanTaskStats(b.id));
-  const totalBeans = beans.length;
-  const totalTasks = allStats.reduce((s,x) => s + x.total, 0);
-  const doneTasks  = allStats.reduce((s,x) => s + x.done, 0);
-  const fullDone   = allStats.filter(x => x.total > 0 && x.done === x.total).length;
-  const notStarted = allStats.filter(x => x.done === 0).length;
+  const totalBeans   = beans.length;
+  const preparing    = beans.filter(b => getBeanOpsStatus(b.id) === 'preparing').length;
+  const ready        = beans.filter(b => getBeanOpsStatus(b.id) === 'ready').length;
+  const notified     = beans.filter(b => getBeanOpsStatus(b.id) === 'notified').length;
 
   document.getElementById('ovStats').innerHTML = [
     { num: totalBeans, label: '咖啡豆總數' },
-    { num: fullDone,   label: '美編全完成' },
-    { num: notStarted, label: '尚未開始' },
-    { num: totalTasks ? Math.round(doneTasks/totalTasks*100)+'%' : '0%', label: '整體完成率' },
+    { num: preparing,  label: '準備中' },
+    { num: ready,      label: '可通知下單', color: '#a07000' },
+    { num: notified,   label: '已通知門店', color: '#2e7d52' },
   ].map(s => `<div class="overview-stat-box">
-    <div class="overview-stat-num">${s.num}</div>
+    <div class="overview-stat-num" ${s.color?`style="color:${s.color}"`:''}>${s.num}</div>
     <div class="overview-stat-label">${s.label}</div>
   </div>`).join('');
 
-  // Sync filter button state with current ovFilter
   document.querySelectorAll('.ov-filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.ovf === ovFilter);
+  });
+  document.querySelectorAll('.ops-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ops === activeOpsFilter);
   });
 
   renderOverviewTable();
@@ -3398,6 +3390,7 @@ function renderOverviewTable() {
 
   let list = beans.map(b => ({ b, stats: getBeanTaskStats(b.id) }));
 
+  if (activeOpsFilter !== 'ALL') list = list.filter(x => getBeanOpsStatus(x.b.id) === activeOpsFilter);
   if (ovFilter === 'incomplete') list = list.filter(x => x.stats.done < x.stats.total);
   if (ovFilter === 'partial')   list = list.filter(x => x.stats.done > 0 && x.stats.done < x.stats.total);
   if (ovFilter === 'done')      list = list.filter(x => x.stats.total > 0 && x.stats.done === x.stats.total);
