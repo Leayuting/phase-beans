@@ -1618,9 +1618,6 @@ header {
     <div class="pw-logo">PHASE</div>
     <div class="pw-sub">Coffee Roasters — Bean Database</div>
     <input class="pw-input" id="pwInput" type="password" placeholder="請輸入密碼"
-      onkeydown="if(event.key==='Enter')document.getElementById('pwNameInput').focus()">
-    <input class="pw-input" id="pwNameInput" placeholder="你的名字（勾選待辦時顯示）"
-      style="font-size:13px;letter-spacing:0.04em"
       onkeydown="if(event.key==='Enter')checkPassword()">
     <button class="pw-btn" onclick="checkPassword()">進入</button>
     <span class="pw-err" id="pwErr">密碼錯誤，請重試</span>
@@ -2053,10 +2050,7 @@ function checkPassword() {
   const nameInput = document.getElementById('pwNameInput');
   const err = document.getElementById('pwErr');
   if (input.value === '82981656') {
-    const name = nameInput ? nameInput.value.trim() : '';
     sessionStorage.setItem('phase_beans_auth', '1');
-    sessionStorage.setItem('phase_beans_user', name);
-    currentUser = name;
     document.getElementById('pwGate').style.display = 'none';
   } else {
     err.style.display = 'block';
