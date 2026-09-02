@@ -1295,8 +1295,9 @@ header {
   .modal-title-zh { font-size: 18px; }
   .modal-body {
     padding: 14px 20px 20px;
-    overflow-y: auto;
+    overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     flex: 1;
     min-height: 0;
   }
@@ -2379,7 +2380,7 @@ function openViewModal(id) {
   const costYieldEl = document.getElementById('costYield');
   if (costYieldEl) costYieldEl.value = b.yield != null ? b.yield : 0.8;
 
-  document.getElementById('viewModalOverlay').classList.add('open');
+  openModal('viewModalOverlay');
   renderDesignTasksForBean(id);
   const row = allRows.find(r => Number(r.id) === id);
   renderQuoteSection(row);
@@ -2466,6 +2467,11 @@ async function toggleInfoVerified() {
 }
 function closeAllModals() {
   document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
+  document.body.style.overflow = '';
+}
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 // ── FORM MODAL ──
@@ -2510,7 +2516,7 @@ function openAddModal() {
   document.getElementById('formStripe').style.background = 'var(--black)';
   fillForm({});
   closeAllModals();
-  document.getElementById('formModalOverlay').classList.add('open');
+  openModal('formModalOverlay');
 }
 
 function openEditFromView() {
@@ -2522,7 +2528,7 @@ function openEditFromView() {
   document.getElementById('formStripe').style.background = cat.color;
   fillForm(b);
   closeAllModals();
-  document.getElementById('formModalOverlay').classList.add('open');
+  openModal('formModalOverlay');
 }
 
 function closeFormModal(e) {
@@ -2724,7 +2730,7 @@ function openDeleteConfirm() {
   if (!b) return;
   document.getElementById('deleteConfirmName').textContent = b.name_zh;
   closeAllModals();
-  document.getElementById('deleteModalOverlay').classList.add('open');
+  openModal('deleteModalOverlay');
 }
 function closeDeleteModal(e) {
   if (e.target === document.getElementById('deleteModalOverlay')) closeAllModals();
@@ -2734,7 +2740,7 @@ function openDelistConfirm() {
   if (!b) return;
   document.getElementById('delistConfirmName').textContent = b.name_zh;
   closeAllModals();
-  document.getElementById('delistModalOverlay').classList.add('open');
+  openModal('delistModalOverlay');
 }
 function closeDelistModal(e) {
   if (e.target === document.getElementById('delistModalOverlay')) closeAllModals();
@@ -3485,7 +3491,7 @@ async function handleRestoreFile(event) {
       (delisted ? '<div>下架豆款：<strong>' + delisted + ' 款</strong></div>' : '') +
       (trashed  ? '<div>垃圾桶：<strong>' + trashed + ' 款</strong></div>' : '') +
       (backup.cost_settings && backup.cost_settings.length ? '<div>包材費用設定：<strong>' + backup.cost_settings.length + ' 筆</strong></div>' : '');
-    document.getElementById('restoreModalOverlay').classList.add('open');
+    openModal('restoreModalOverlay');
   } catch(e) {
     showToast('⚠ 檔案解析失敗：' + e.message);
   }
