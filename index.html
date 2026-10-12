@@ -2542,6 +2542,9 @@ function copyBeanInfo() {
   const fzh = (b.flavors_zh||[]).filter(f=>!f.includes('：')&&!f.includes(':')).join('｜');
   const fen = (b.flavors_en||[]).filter(f=>!f.includes('：')&&!f.includes(':')).join('｜');
   const lines = [];
+  if (b.name_zh) lines.push(b.name_zh);
+  if (b.name_en) lines.push(b.name_en);
+  if (b.name_zh || b.name_en) lines.push('');
   if (fzh) lines.push(fzh);
   if (fen) lines.push(fen);
   lines.push('');
